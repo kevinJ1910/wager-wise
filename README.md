@@ -63,7 +63,7 @@ app y en el backend.
 
 ```bash
 pnpm install
-pnpm test          # 117 tests
+pnpm test          # 119 tests
 pnpm typecheck
 ```
 
@@ -84,7 +84,14 @@ supabase link --project-ref TU_REF
 supabase db push
 cp .env.example .env                            # rellena los valores
 supabase secrets set --env-file .env
-supabase functions deploy ingest-fixtures ingest-odds
+supabase functions deploy ingest-fixtures ingest-odds fit-model generate-parlays
+```
+
+Las Edge Functions se comprueban con Deno (el motor compilado lleva directivas
+`@ts-self-types` para que Deno encuentre sus tipos):
+
+```bash
+cd supabase/functions && deno check --config deno.json */index.ts
 ```
 
 El cron (`supabase/migrations/*_cron.sql`) necesita dos secretos en Vault antes

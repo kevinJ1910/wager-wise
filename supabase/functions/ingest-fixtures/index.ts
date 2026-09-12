@@ -5,7 +5,7 @@
  * Se invoca por `pg_cron`. Todo el gasto pasa por el guard de cuota.
  */
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
   fetchFixtures,
   mapFixtureStatus,
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
 });
 
 async function upsertLeague(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   league: (typeof LEAGUES)[number],
 ): Promise<void> {
   const { error } = await supabase.from('leagues').upsert(
