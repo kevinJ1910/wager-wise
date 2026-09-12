@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300..800;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F0EEE9; --bg2:#E6E2D9; --ink:#1F1E1D; --ink2:rgba(31,30,29,.62); --ink3:rgba(31,30,29,.42);
+  --glass:rgba(255,255,255,.58); --glass2:rgba(255,255,255,.38); --stroke:rgba(31,30,29,.10);
+  --hair:rgba(31,30,29,.08); --accent:#C15F3C; --accent2:#DA7756; --accent-soft:rgba(193,95,60,.12);
+  --good:#2F6B4F; --good-soft:rgba(47,107,79,.13); --bad:#A83F36; --bad-soft:rgba(168,63,54,.12);
+  --warn:#8A6A1E; --warn-soft:rgba(138,106,30,.14);
+  --shadow:rgba(31,30,29,.10); --b1:rgba(218,119,86,.55); --b2:rgba(120,150,190,.42); --b3:rgba(160,190,160,.38);
+}
+body[data-theme="dark"]{
+  --bg:#171715; --bg2:#232321; --ink:#F4F1EC; --ink2:rgba(244,241,236,.62); --ink3:rgba(244,241,236,.40);
+  --glass:rgba(255,255,255,.07); --glass2:rgba(255,255,255,.045); --stroke:rgba(255,255,255,.13);
+  --hair:rgba(255,255,255,.09); --accent:#DA7756; --accent2:#E89272; --accent-soft:rgba(218,119,86,.16);
+  --good:#6FBF92; --good-soft:rgba(111,191,146,.14); --bad:#E5796C; --bad-soft:rgba(229,121,108,.14);
+  --warn:#D8B25A; --warn-soft:rgba(216,178,90,.14);
+  --shadow:rgba(0,0,0,.45); --b1:rgba(218,119,86,.42); --b2:rgba(90,130,185,.38); --b3:rgba(110,160,130,.30);
+}
+body{margin:0;background:var(--bg2);font-family:"Hanken Grotesk",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent2)}
+@keyframes fl1{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(26px,-34px,0) scale(1.12)}}
+@keyframes fl2{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-30px,28px,0) scale(1.08)}}
+@keyframes fl3{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(18px,26px,0) scale(1.16)}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+[data-noscroll]{scrollbar-width:none;-ms-overflow-style:none}
+[data-noscroll]::-webkit-scrollbar{display:none;width:0;height:0}
+</style>
+</helmet>
+
+<div style="min-height:100%;background:var(--bg2);padding:36px 20px 44px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:22px">
+
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center">
+    <div style="font:600 13px/1.2 'Hanken Grotesk',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">WagerWise · análisis de apuestas</div>
+    <div style="display:flex;gap:6px;background:var(--glass);border:1px solid var(--stroke);border-radius:999px;padding:5px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)">
+      <div onClick="{{ setLight }}" style="{{ lightBtn }}">Claro</div>
+      <div onClick="{{ setDark }}" style="{{ darkBtn }}">Oscuro</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:22px;padding:14px 22px;border-radius:28px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 30px var(--shadow)">
+    <div style="position:relative;width:76px;height:76px;border-radius:21px;overflow:hidden;background:linear-gradient(155deg,#E89272,#C15F3C 56%,#8E3F27);box-shadow:0 12px 28px rgba(193,95,60,.4);flex:none">
+      <div style="position:absolute;top:-12px;left:-10px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.34);filter:blur(8px)"></div>
+      <div style="position:absolute;bottom:-18px;right:-12px;width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.20);filter:blur(9px)"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0) 52%)"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 40px/1 Newsreader,Georgia,serif;color:#fff;padding-bottom:3px">W</div>
+      <div style="position:absolute;bottom:12px;right:12px;width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.85);box-shadow:0 0 0 3.5px rgba(255,255,255,.22)"></div>
+    </div>
+    <div style="position:relative;width:52px;height:52px;border-radius:15px;overflow:hidden;background:linear-gradient(155deg,#E89272,#C15F3C 56%,#8E3F27);flex:none">
+      <div style="position:absolute;top:-8px;left:-7px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.32);filter:blur(6px)"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 28px/1 Newsreader,Georgia,serif;color:#fff">W</div>
+    </div>
+    <div style="position:relative;width:34px;height:34px;border-radius:10px;overflow:hidden;background:linear-gradient(155deg,#E89272,#C15F3C 56%,#8E3F27);flex:none">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 19px/1 Newsreader,Georgia,serif;color:#fff">W</div>
+    </div>
+    <div style="border-left:1px solid var(--hair);padding-left:20px">
+      <div style="font:500 21px/1.1 Newsreader,Georgia,serif;color:var(--ink)">WagerWise</div>
+      <div style="font:400 11.5px/1.4 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:4px">Icono · 76 / 52 / 34 px</div>
+    </div>
+  </div>
+
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',system-ui,sans-serif">
+
+      <div style="position:absolute;inset:-80px;pointer-events:none;z-index:0">
+        <div style="position:absolute;top:40px;left:-40px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle at 34% 32%,var(--b1),transparent 68%);filter:blur(34px);animation:fl1 17s ease-in-out infinite"></div>
+        <div style="position:absolute;top:300px;right:-70px;width:290px;height:290px;border-radius:50%;background:radial-gradient(circle at 60% 40%,var(--b2),transparent 68%);filter:blur(38px);animation:fl2 21s ease-in-out infinite"></div>
+        <div style="position:absolute;bottom:20px;left:30px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle at 40% 60%,var(--b3),transparent 70%);filter:blur(40px);animation:fl3 25s ease-in-out infinite"></div>
+      </div>
+
+      <div data-noscroll="true" style="position:relative;z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;padding:56px 0 20px">
+
+        <!-- ══ SPLASH / AUTH ENTRY ══ -->
+        <sc-if value="{{ isSplash }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:40px 24px 30px;display:flex;flex-direction:column;align-items:center;gap:26px;min-height:700px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+              <div style="position:relative;width:112px;height:112px;border-radius:30px;overflow:hidden;background:linear-gradient(155deg,#E89272,#C15F3C 56%,#8E3F27);box-shadow:0 20px 44px rgba(193,95,60,.45)">
+                <div style="position:absolute;top:-18px;left:-14px;width:78px;height:78px;border-radius:50%;background:rgba(255,255,255,.34);filter:blur(10px)"></div>
+                <div style="position:absolute;bottom:-26px;right:-18px;width:86px;height:86px;border-radius:50%;background:rgba(255,255,255,.20);filter:blur(12px)"></div>
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0) 52%)"></div>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 58px/1 Newsreader,Georgia,serif;color:#fff;letter-spacing:-.02em;padding-bottom:4px">W</div>
+                <div style="position:absolute;bottom:18px;right:18px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.85);box-shadow:0 0 0 5px rgba(255,255,255,.22)"></div>
+              </div>
+              <div style="text-align:center">
+                <div style="font:500 38px/1.05 Newsreader,Georgia,serif;letter-spacing:-.01em">WagerWise</div>
+                <div style="font:400 14.5px/1.55 'Hanken Grotesk',sans-serif;color:var(--ink2);margin-top:10px;max-width:270px;text-wrap:pretty">Análisis de apuestas y parlays auditados. Sin errores de correlación, sin EV negativo.</div>
+              </div>
+            </div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:11px">
+              <div onClick="{{ goRegister }}" style="height:54px;border-radius:27px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font:600 16px/1 'Hanken Grotesk',sans-serif;box-shadow:0 10px 26px var(--accent-soft);cursor:pointer" style-hover="filter:brightness(1.06)">Crear cuenta</div>
+              <div onClick="{{ goLogin }}" style="height:54px;border-radius:27px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;font:600 16px/1 'Hanken Grotesk',sans-serif;cursor:pointer" style-hover="border-color:var(--accent);color:var(--accent)">Ya tengo cuenta</div>
+              <div style="font:400 11.5px/1.5 'Hanken Grotesk',sans-serif;color:var(--ink3);text-align:center;margin-top:6px">Solo para mayores de 18 años. Juega con responsabilidad.</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ══ LOGIN / REGISTRO ══ -->
+        <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:6px 22px 30px;display:flex;flex-direction:column;gap:20px;min-height:700px">
+            <div style="display:flex;align-items:center;gap:12px;height:52px">
+              <div style="position:relative;width:38px;height:38px;border-radius:11px;overflow:hidden;background:linear-gradient(155deg,#E89272,#C15F3C 60%,#8E3F27);flex:none">
+                <div style="position:absolute;top:-6px;left:-5px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.34);filter:blur(4px)"></div>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 21px/1 Newsreader,Georgia,serif;color:#fff">W</div>
+              </div>
+              <div style="font:600 16px/1 'Hanken Grotesk',sans-serif;letter-spacing:-.01em">WagerWise</div>
+            </div>
+
+            <div>
+              <div style="font:500 32px/1.1 Newsreader,Georgia,serif">{{ authTitle }}</div>
+              <div style="font:400 14.5px/1.55 'Hanken Grotesk',sans-serif;color:var(--ink2);margin-top:10px;max-width:290px;text-wrap:pretty">{{ authSub }}</div>
+            </div>
+
+            <div onClick="{{ googleAuth }}" style="height:54px;border-radius:27px;background:var(--glass);border:1px solid var(--stroke);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;gap:11px;font:600 15px/1 'Hanken Grotesk',sans-serif;cursor:pointer;box-shadow:0 8px 24px var(--shadow)" style-hover="border-color:var(--accent)">
+              <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden="true"><circle cx="9.5" cy="9.5" r="8.5" fill="none" stroke="var(--stroke)"/><text x="9.5" y="13.4" text-anchor="middle" font-family="'Hanken Grotesk',sans-serif" font-size="12" font-weight="700" fill="currentColor">G</text></svg>
+              {{ googleCta }}
+            </div>
+
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="flex:1;height:1px;background:var(--hair)"></div>
+              <div style="font:500 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">o con correo</div>
+              <div style="flex:1;height:1px;background:var(--hair)"></div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:11px">
+              <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+                <input type="text" placeholder="Nombre completo" value="{{ name }}" onChange="{{ onName }}" style="{{ inputStyle }}" />
+              </sc-if>
+              <input type="email" placeholder="tu@correo.com" value="{{ email }}" onChange="{{ onEmail }}" style="{{ emailStyle }}" />
+              <sc-if value="{{ emailErr }}" hint-placeholder-val="{{ false }}">
+                <div style="font:500 11.5px/1.3 'Hanken Grotesk',sans-serif;color:var(--bad);padding-left:6px">Correo no válido</div>
+              </sc-if>
+              <input type="password" placeholder="Contraseña (mín. 8 caracteres)" value="{{ pass }}" onChange="{{ onPass }}" style="{{ passStyle }}" />
+              <sc-if value="{{ passErr }}" hint-placeholder-val="{{ false }}">
+                <div style="font:500 11.5px/1.3 'Hanken Grotesk',sans-serif;color:var(--bad);padding-left:6px">Mínimo 8 caracteres</div>
+              </sc-if>
+
+              <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ toggleAgree }}" style="display:flex;align-items:flex-start;gap:11px;min-height:44px;padding:8px 4px;cursor:pointer">
+                  <div style="{{ agreeBox }}">{{ agreeMark }}</div>
+                  <div style="font:400 12.5px/1.45 'Hanken Grotesk',sans-serif;color:var(--ink2);text-wrap:pretty">Tengo 18 años o más y acepto los términos y la política de juego responsable.</div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+                <div style="font:600 13px/1 'Hanken Grotesk',sans-serif;color:var(--accent);padding:6px 4px;cursor:pointer">¿Olvidaste tu contraseña?</div>
+              </sc-if>
+
+              <div onClick="{{ submitAuth }}" style="{{ authBtnStyle }}">{{ authCta }}</div>
+            </div>
+
+            <div style="margin-top:auto;display:flex;align-items:center;justify-content:center;gap:7px;font:400 13.5px/1 'Hanken Grotesk',sans-serif;color:var(--ink2)">
+              {{ authAltQ }}
+              <span onClick="{{ authAlt }}" style="font-weight:600;color:var(--accent);cursor:pointer">{{ authAltCta }}</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ══ ONBOARDING ══ -->
+        <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:18px 22px 30px;display:flex;flex-direction:column;gap:26px;min-height:700px">
+            <div style="display:flex;gap:7px">
+              <div style="{{ dot1 }}"></div><div style="{{ dot2 }}"></div><div style="{{ dot3 }}"></div>
+            </div>
+            <div>
+              <div style="font:500 34px/1.1 Newsreader,Georgia,serif;letter-spacing:-.01em">{{ onbTitle }}</div>
+              <div style="font:400 15px/1.55 'Hanken Grotesk',sans-serif;color:var(--ink2);margin-top:12px;max-width:300px;text-wrap:pretty">{{ onbBody }}</div>
+            </div>
+
+            <sc-if value="{{ onb1 }}" hint-placeholder-val="{{ true }}">
+              <div style="background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--stroke);border-radius:28px;padding:22px;box-shadow:0 10px 34px var(--shadow);display:flex;flex-direction:column;gap:18px">
+                <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Bankroll inicial</div>
+                <div style="font:500 44px/1 Newsreader,Georgia,serif">{{ bankrollFmt }}</div>
+                <input type="range" min="200000" max="20000000" step="100000" value="{{ bankroll }}" onChange="{{ onBankroll }}" style="width:100%;accent-color:var(--accent);height:44px" />
+                <div style="font:400 13px/1.5 'Hanken Grotesk',sans-serif;color:var(--ink2)">Usamos tu bankroll para calcular el stake sugerido con Kelly fraccionado. Nunca verás una recomendación por encima de tu límite.</div>
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Moneda</div>
+                  <div data-noscroll="true" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
+                    <sc-for list="{{ currencyOpts }}" as="c" hint-placeholder-count="5">
+                      <div onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.code }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ onb2 }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-wrap:wrap;gap:10px">
+                <sc-for list="{{ leagueOpts }}" as="lg" hint-placeholder-count="6">
+                  <div onClick="{{ lg.toggle }}" style="{{ lg.chipStyle }}">{{ lg.name }}</div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ onb3 }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ riskOpts }}" as="r" hint-placeholder-count="3">
+                  <div onClick="{{ r.pick }}" style="{{ r.cardStyle }}">
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                      <div style="font:600 17px/1.2 'Hanken Grotesk',sans-serif">{{ r.name }}</div>
+                      <div style="font:500 12px/1 'Hanken Grotesk',sans-serif;color:var(--accent)">{{ r.kelly }}</div>
+                    </div>
+                    <div style="font:400 13px/1.5 'Hanken Grotesk',sans-serif;color:var(--ink2);margin-top:6px">{{ r.desc }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+              <div onClick="{{ onbNext }}" style="height:54px;border-radius:27px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font:600 16px/1 'Hanken Grotesk',sans-serif;box-shadow:0 10px 26px var(--accent-soft);cursor:pointer" style-hover="filter:brightness(1.06)">{{ onbCta }}</div>
+              <div onClick="{{ skipOnb }}" style="height:44px;display:flex;align-items:center;justify-content:center;font:500 14px/1 'Hanken Grotesk',sans-serif;color:var(--ink3);cursor:pointer">Saltar</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ══ HOME ══ -->
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:6px 18px 10px;display:flex;flex-direction:column;gap:16px">
+
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:0 4px">
+              <div>
+                <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Hoy · La Liga & más</div>
+                <div style="font:500 30px/1.1 Newsreader,Georgia,serif;margin-top:7px">Partidos de hoy</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font:600 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">Bankroll</div>
+                <div style="font:600 19px/1.1 'Hanken Grotesk',sans-serif;margin-top:5px">{{ bankrollFmt }}</div>
+              </div>
+            </div>
+
+            <div data-noscroll="true" style="display:flex;gap:8px;overflow-x:auto;padding:2px 4px 4px;margin:0 -4px">
+              <sc-for list="{{ leagueFilters }}" as="f" hint-placeholder-count="5">
+                <div onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.name }}</div>
+              </sc-for>
+            </div>
+
+            <div style="position:relative;border-radius:30px;padding:20px;overflow:hidden;background:var(--glass);backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid var(--stroke);box-shadow:0 14px 40px var(--shadow)">
+              <div style="position:absolute;top:-60px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,var(--b1),transparent 70%);filter:blur(24px);pointer-events:none"></div>
+              <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font:700 12px/1 'Hanken Grotesk',sans-serif">AI</div>
+                  <div style="font:600 13px/1 'Hanken Grotesk',sans-serif;letter-spacing:.02em">Parlay del día</div>
+                </div>
+                <div style="padding:6px 11px;border-radius:999px;background:var(--good-soft);color:var(--good);font:600 12px/1 'Hanken Grotesk',sans-serif">EV +{{ dailyEv }}%</div>
+              </div>
+              <div style="position:relative;display:flex;flex-direction:column;gap:9px;margin-top:16px">
+                <sc-for list="{{ dailyLegs }}" as="l" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border-radius:17px;background:var(--glass2);border:1px solid var(--hair)">
+                    <div style="min-width:0">
+                      <div style="font:600 13.5px/1.25 'Hanken Grotesk',sans-serif">{{ l.market }}</div>
+                      <div style="font:400 11.5px/1.3 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:3px">{{ l.match }}</div>
+                    </div>
+                    <div style="font:600 15px/1 'Hanken Grotesk',sans-serif;color:var(--accent);flex:none">{{ l.odds }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="position:relative;display:flex;align-items:center;justify-content:space-between;margin-top:16px">
+                <div>
+                  <div style="font:600 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">Cuota combinada</div>
+                  <div style="font:500 26px/1.05 Newsreader,Georgia,serif;margin-top:6px">{{ dailyOdds }}</div>
+                </div>
+                <div onClick="{{ loadDaily }}" style="height:46px;padding:0 20px;border-radius:23px;background:var(--ink);color:var(--bg);display:flex;align-items:center;font:600 14px/1 'Hanken Grotesk',sans-serif;cursor:pointer" style-hover="opacity:.86">Cargar al builder</div>
+              </div>
+            </div>
+
+            <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);padding:8px 4px 0">{{ matchCountLabel }}</div>
+
+            <sc-for list="{{ matches }}" as="m" hint-placeholder-count="4">
+              <div onClick="{{ m.open }}" style="background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--stroke);border-radius:26px;padding:16px 17px;box-shadow:0 8px 26px var(--shadow);cursor:pointer;animation:rise .35s ease both" style-hover="border-color:var(--accent)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="font:500 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">{{ m.league }} · {{ m.time }}</div>
+                  <div style="{{ m.evStyle }}">{{ m.evLabel }}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:13px">
+                  <div style="flex:1;min-width:0">
+                    <div style="font:600 16.5px/1.3 'Hanken Grotesk',sans-serif">{{ m.home }}</div>
+                    <div style="font:600 16.5px/1.3 'Hanken Grotesk',sans-serif;color:var(--ink2);margin-top:2px">{{ m.away }}</div>
+                  </div>
+                  <div style="display:flex;gap:6px;flex:none">
+                    <sc-for list="{{ m.quick }}" as="q" hint-placeholder-count="3">
+                      <div style="width:52px;height:50px;border-radius:15px;background:var(--glass2);border:1px solid var(--hair);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+                        <div style="font:500 9.5px/1 'Hanken Grotesk',sans-serif;color:var(--ink3)">{{ q.k }}</div>
+                        <div style="font:600 14px/1 'Hanken Grotesk',sans-serif">{{ q.v }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;margin-top:14px">
+                  <div style="flex:1;height:6px;border-radius:3px;background:var(--hair);overflow:hidden;display:flex">
+                    <div style="{{ m.barHome }}"></div>
+                    <div style="{{ m.barDraw }}"></div>
+                  </div>
+                  <div style="font:500 11px/1 'Hanken Grotesk',sans-serif;color:var(--ink3);flex:none">modelo {{ m.modelLabel }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ══ MATCH ══ -->
+        <sc-if value="{{ isMatch }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:4px 18px 10px;display:flex;flex-direction:column;gap:15px">
+            <div onClick="{{ goHome }}" style="display:flex;align-items:center;gap:7px;height:44px;font:600 14px/1 'Hanken Grotesk',sans-serif;color:var(--ink2);cursor:pointer">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Partidos
+            </div>
+
+            <div style="position:relative;border-radius:30px;padding:22px;overflow:hidden;background:var(--glass);backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid var(--stroke);box-shadow:0 14px 40px var(--shadow)">
+              <div style="position:absolute;bottom:-70px;left:-30px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--b2),transparent 70%);filter:blur(26px);pointer-events:none"></div>
+              <div style="position:relative;font:500 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">{{ sel.league }} · {{ sel.time }} · Jornada 6</div>
+              <div style="position:relative;font:500 32px/1.12 Newsreader,Georgia,serif;margin-top:12px">{{ sel.home }}<br/>vs {{ sel.away }}</div>
+              <div style="position:relative;display:flex;gap:8px;margin-top:18px">
+                <sc-for list="{{ sel.probs }}" as="p" hint-placeholder-count="3">
+                  <div style="flex:1;padding:12px 10px;border-radius:18px;background:var(--glass2);border:1px solid var(--hair);text-align:center">
+                    <div style="font:500 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">{{ p.k }}</div>
+                    <div style="font:600 20px/1 'Hanken Grotesk',sans-serif;margin-top:7px">{{ p.v }}</div>
+                    <div style="font:500 10.5px/1 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:5px">cuota {{ p.o }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--stroke);border-radius:26px;padding:17px;box-shadow:0 8px 26px var(--shadow);display:flex;flex-direction:column;gap:14px">
+              <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Forma y métricas</div>
+              <sc-for list="{{ sel.stats }}" as="s" hint-placeholder-count="4">
+                <div>
+                  <div style="display:flex;justify-content:space-between;font:500 12.5px/1 'Hanken Grotesk',sans-serif;color:var(--ink2)">
+                    <span>{{ s.a }}</span><span style="color:var(--ink3)">{{ s.label }}</span><span>{{ s.b }}</span>
+                  </div>
+                  <div style="display:flex;gap:4px;margin-top:7px;height:7px">
+                    <div style="flex:1;border-radius:4px;background:var(--hair);display:flex;justify-content:flex-end;overflow:hidden"><div style="{{ s.barA }}"></div></div>
+                    <div style="flex:1;border-radius:4px;background:var(--hair);overflow:hidden"><div style="{{ s.barB }}"></div></div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);padding:6px 4px 0">Mercados · toca para añadir</div>
+
+            <sc-for list="{{ sel.markets }}" as="mk" hint-placeholder-count="5">
+              <div style="{{ mk.wrapStyle }}">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div onClick="{{ mk.toggle }}" style="flex:1;min-width:0;cursor:pointer">
+                    <div style="font:600 15px/1.25 'Hanken Grotesk',sans-serif">{{ mk.name }}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                      <div style="font:500 11.5px/1 'Hanken Grotesk',sans-serif;color:var(--ink3)">prob. modelo {{ mk.prob }}</div>
+                      <div style="{{ mk.evStyle }}">{{ mk.ev }}</div>
+                    </div>
+                  </div>
+                  <div onClick="{{ mk.toggle }}" style="{{ mk.oddsStyle }}">{{ mk.odds }}</div>
+                  <div onClick="{{ mk.expand }}" style="width:34px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;flex:none">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                </div>
+                <sc-if value="{{ mk.open }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:13px;padding:14px;border-radius:18px;background:var(--accent-soft);border:1px solid var(--hair)">
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font:700 9px/1 'Hanken Grotesk',sans-serif">AI</div>
+                      <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)">Razonamiento</div>
+                    </div>
+                    <div style="font:400 13.5px/1.55 'Hanken Grotesk',sans-serif;color:var(--ink);margin-top:10px;text-wrap:pretty">{{ mk.reason }}</div>
+                    <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap">
+                      <sc-for list="{{ mk.facts }}" as="f" hint-placeholder-count="3">
+                        <div>
+                          <div style="font:500 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">{{ f.k }}</div>
+                          <div style="font:600 14px/1 'Hanken Grotesk',sans-serif;margin-top:5px">{{ f.v }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ══ BUILDER ══ -->
+        <sc-if value="{{ isBuilder }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:6px 18px 10px;display:flex;flex-direction:column;gap:15px">
+            <div style="padding:0 4px">
+              <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Constructor · parlay builder</div>
+              <div style="font:500 30px/1.1 Newsreader,Georgia,serif;margin-top:7px">{{ legCountLabel }}</div>
+            </div>
+
+            <div style="position:relative;border-radius:30px;padding:22px;overflow:hidden;background:var(--glass);backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid var(--stroke);box-shadow:0 14px 40px var(--shadow)">
+              <div style="position:absolute;top:-50px;right:-50px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,var(--b3),transparent 70%);filter:blur(26px);pointer-events:none"></div>
+              <div style="position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+                <div>
+                  <div style="font:600 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">Cuota total</div>
+                  <div style="font:500 46px/1 Newsreader,Georgia,serif;margin-top:8px">{{ totalOdds }}</div>
+                </div>
+                <div style="{{ evBadge }}">{{ evLabel }}</div>
+              </div>
+              <div style="position:relative;display:flex;gap:10px;margin-top:20px">
+                <div style="flex:1;padding:13px;border-radius:18px;background:var(--glass2);border:1px solid var(--hair)">
+                  <div style="font:500 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)">Prob. implícita</div>
+                  <div style="font:600 18px/1 'Hanken Grotesk',sans-serif;margin-top:7px">{{ impliedProb }}</div>
+                </div>
+                <div style="flex:1;padding:13px;border-radius:18px;background:var(--glass2);border:1px solid var(--hair)">
+                  <div style="font:500 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)">Prob. modelo</div>
+                  <div style="font:600 18px/1 'Hanken Grotesk',sans-serif;margin-top:7px;color:var(--accent)">{{ modelProb }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="{{ auditStyle }}">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="{{ auditIconStyle }}">{{ auditIcon }}</div>
+                <div style="font:600 13.5px/1.2 'Hanken Grotesk',sans-serif">{{ auditTitle }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:9px;margin-top:13px">
+                <sc-for list="{{ checks }}" as="c" hint-placeholder-count="4">
+                  <div style="display:flex;gap:10px;align-items:flex-start">
+                    <div style="{{ c.dot }}"></div>
+                    <div style="min-width:0">
+                      <div style="font:600 13px/1.3 'Hanken Grotesk',sans-serif">{{ c.title }}</div>
+                      <div style="font:400 12.5px/1.45 'Hanken Grotesk',sans-serif;color:var(--ink2);margin-top:3px;text-wrap:pretty">{{ c.body }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ hasFix }}" hint-placeholder-val="{{ true }}">
+                <div onClick="{{ applyFix }}" style="margin-top:15px;height:46px;border-radius:23px;border:1px solid var(--stroke);background:var(--glass2);display:flex;align-items:center;justify-content:center;font:600 13.5px/1 'Hanken Grotesk',sans-serif;cursor:pointer" style-hover="border-color:var(--accent);color:var(--accent)">{{ fixLabel }}</div>
+              </sc-if>
+            </div>
+
+            <sc-for list="{{ legs }}" as="l" hint-placeholder-count="3">
+              <div style="background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--stroke);border-radius:24px;padding:15px 16px;box-shadow:0 8px 24px var(--shadow);display:flex;align-items:center;gap:12px">
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 14.5px/1.3 'Hanken Grotesk',sans-serif">{{ l.market }}</div>
+                  <div style="font:400 11.5px/1.35 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:4px">{{ l.match }}</div>
+                  <sc-if value="{{ l.flagged }}" hint-placeholder-val="{{ false }}">
+                    <div style="font:600 11px/1.3 'Hanken Grotesk',sans-serif;color:var(--warn);margin-top:6px">{{ l.flagText }}</div>
+                  </sc-if>
+                </div>
+                <div style="font:600 16px/1 'Hanken Grotesk',sans-serif;color:var(--accent);flex:none">{{ l.odds }}</div>
+                <div onClick="{{ l.remove }}" style="width:34px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;flex:none" style-hover="color:var(--bad)">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3.5 3.5l8 8M11.5 3.5l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--stroke);border-radius:26px;padding:19px;box-shadow:0 8px 26px var(--shadow)">
+              <div style="display:flex;align-items:baseline;justify-content:space-between">
+                <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Stake · Kelly {{ kellyLabel }}</div>
+                <div style="font:600 20px/1 'Hanken Grotesk',sans-serif">{{ stakeFmt }}</div>
+              </div>
+              <input type="range" min="1" max="12" step="1" value="{{ stakePct }}" onChange="{{ onStake }}" style="width:100%;accent-color:var(--accent);height:44px;margin-top:6px" />
+              <div style="display:flex;justify-content:space-between;font:500 12px/1 'Hanken Grotesk',sans-serif;color:var(--ink3)">
+                <span>{{ stakePctLabel }} del bankroll</span><span>Retorno {{ returnFmt }}</span>
+              </div>
+              <div onClick="{{ placeBet }}" style="{{ placeStyle }}">{{ placeLabel }}</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ══ VALUE ALERTS ══ -->
+        <sc-if value="{{ isAlerts }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:6px 18px 10px;display:flex;flex-direction:column;gap:15px">
+            <div style="padding:0 4px">
+              <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Value bets · en vivo</div>
+              <div style="font:500 30px/1.1 Newsreader,Georgia,serif;margin-top:7px">Alertas de valor</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <sc-for list="{{ alertFilters }}" as="f" hint-placeholder-count="3">
+                <div onClick="{{ f.pick }}" style="{{ f.style }}">{{ f.name }}</div>
+              </sc-for>
+            </div>
+            <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="4">
+              <div style="position:relative;overflow:hidden;background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--stroke);border-radius:26px;padding:17px;box-shadow:0 8px 26px var(--shadow)">
+                <div style="{{ a.glow }}"></div>
+                <div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="font:500 10.5px/1 'Hanken Grotesk',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">{{ a.time }} · {{ a.league }}</div>
+                  <div style="{{ a.evStyle }}">EV {{ a.ev }}</div>
+                </div>
+                <div style="position:relative;font:600 16px/1.3 'Hanken Grotesk',sans-serif;margin-top:11px">{{ a.market }}</div>
+                <div style="position:relative;font:400 12.5px/1.35 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:4px">{{ a.match }}</div>
+                <div style="position:relative;display:flex;align-items:center;gap:12px;margin-top:15px">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between;font:500 11px/1 'Hanken Grotesk',sans-serif;color:var(--ink3)">
+                      <span>Confianza</span><span>{{ a.conf }}</span>
+                    </div>
+                    <div style="height:6px;border-radius:3px;background:var(--hair);margin-top:6px;overflow:hidden"><div style="{{ a.confBar }}"></div></div>
+                  </div>
+                  <div onClick="{{ a.add }}" style="height:44px;padding:0 16px;border-radius:22px;background:var(--accent);color:#fff;display:flex;align-items:center;font:600 13.5px/1 'Hanken Grotesk',sans-serif;cursor:pointer;flex:none" style-hover="filter:brightness(1.07)">{{ a.cta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ══ MY BETS ══ -->
+        <sc-if value="{{ isBets }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:6px 18px 10px;display:flex;flex-direction:column;gap:15px">
+            <div style="padding:0 4px">
+              <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Historial · últimos 30 días</div>
+              <div style="font:500 30px/1.1 Newsreader,Georgia,serif;margin-top:7px">Mis apuestas</div>
+            </div>
+
+            <div style="position:relative;overflow:hidden;border-radius:30px;padding:22px;background:var(--glass);backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid var(--stroke);box-shadow:0 14px 40px var(--shadow)">
+              <div style="position:absolute;bottom:-70px;right:-40px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--b3),transparent 70%);filter:blur(28px);pointer-events:none"></div>
+              <div style="position:relative;display:flex;align-items:flex-end;justify-content:space-between">
+                <div>
+                  <div style="font:600 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">Profit / loss</div>
+                  <div style="font:500 40px/1 Newsreader,Georgia,serif;margin-top:8px;color:var(--good)">{{ plFmt }}</div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:4px;height:56px">
+                  <sc-for list="{{ spark }}" as="s" hint-placeholder-count="12">
+                    <div style="{{ s.style }}"></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="position:relative;display:flex;gap:10px;margin-top:18px">
+                <sc-for list="{{ betStats }}" as="b" hint-placeholder-count="3">
+                  <div style="flex:1;padding:12px;border-radius:17px;background:var(--glass2);border:1px solid var(--hair)">
+                    <div style="font:500 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">{{ b.k }}</div>
+                    <div style="font:600 17px/1 'Hanken Grotesk',sans-serif;margin-top:7px">{{ b.v }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="5">
+              <div style="background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--stroke);border-radius:24px;padding:16px;box-shadow:0 8px 24px var(--shadow);display:flex;align-items:center;gap:13px">
+                <div style="{{ h.pill }}">{{ h.state }}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 14.5px/1.3 'Hanken Grotesk',sans-serif">{{ h.title }}</div>
+                  <div style="font:400 11.5px/1.35 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:4px">{{ h.sub }}</div>
+                </div>
+                <div style="text-align:right;flex:none">
+                  <div style="{{ h.amountStyle }}">{{ h.amount }}</div>
+                  <div style="font:500 11px/1 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:5px">{{ h.odds }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ══ PROFILE ══ -->
+        <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:6px 18px 10px;display:flex;flex-direction:column;gap:15px">
+            <div style="padding:0 4px">
+              <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Cuenta</div>
+              <div style="font:500 30px/1.1 Newsreader,Georgia,serif;margin-top:7px">Perfil y bankroll</div>
+            </div>
+
+            <div style="position:relative;overflow:hidden;border-radius:30px;padding:22px;background:var(--glass);backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);border:1px solid var(--stroke);box-shadow:0 14px 40px var(--shadow)">
+              <div style="position:absolute;top:-60px;left:-30px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,var(--b1),transparent 70%);filter:blur(26px);pointer-events:none"></div>
+              <div style="position:relative;display:flex;align-items:center;gap:14px">
+                <div style="width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font:600 20px/1 'Hanken Grotesk',sans-serif">JM</div>
+                <div>
+                  <div style="font:600 18px/1.2 'Hanken Grotesk',sans-serif">Juan Manuel</div>
+                  <div style="font:400 12.5px/1.3 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:3px">Perfil {{ riskName }} · Kelly {{ kellyLabel }}</div>
+                </div>
+              </div>
+              <div style="position:relative;margin-top:20px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <div style="font:600 10px/1 'Hanken Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">Bankroll</div>
+                  <div style="font:500 30px/1 Newsreader,Georgia,serif">{{ bankrollFmt }}</div>
+                </div>
+                <input type="range" min="200000" max="20000000" step="100000" value="{{ bankroll }}" onChange="{{ onBankroll }}" style="width:100%;accent-color:var(--accent);height:44px;margin-top:4px" />
+                <div style="font:500 12px/1.4 'Hanken Grotesk',sans-serif;color:var(--ink3)">Límite semanal {{ weeklyLimit }} · expuesto ahora {{ exposure }}</div>
+                <div style="display:flex;flex-direction:column;gap:9px;margin-top:16px">
+                  <div style="font:600 11px/1 'Hanken Grotesk',sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Moneda</div>
+                  <div data-noscroll="true" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
+                    <sc-for list="{{ currencyOpts }}" as="c" hint-placeholder-count="5">
+                      <div onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.code }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--stroke);border-radius:26px;padding:6px 17px;box-shadow:0 8px 26px var(--shadow)">
+              <sc-for list="{{ settings }}" as="s" hint-placeholder-count="5">
+                <div onClick="{{ s.toggle }}" style="display:flex;align-items:center;gap:12px;min-height:58px;border-bottom:1px solid var(--hair);cursor:pointer">
+                  <div style="flex:1;min-width:0">
+                    <div style="font:600 14.5px/1.25 'Hanken Grotesk',sans-serif">{{ s.name }}</div>
+                    <div style="font:400 11.5px/1.4 'Hanken Grotesk',sans-serif;color:var(--ink3);margin-top:3px">{{ s.desc }}</div>
+                  </div>
+                  <div style="{{ s.trackStyle }}"><div style="{{ s.knobStyle }}"></div></div>
+                </div>
+              </sc-for>
+              <div onClick="{{ replayOnb }}" style="display:flex;align-items:center;min-height:58px;border-bottom:1px solid var(--hair);font:600 14.5px/1 'Hanken Grotesk',sans-serif;color:var(--accent);cursor:pointer">Repetir onboarding</div>
+              <div onClick="{{ logout }}" style="display:flex;align-items:center;min-height:58px;font:600 14.5px/1 'Hanken Grotesk',sans-serif;color:var(--ink2);cursor:pointer" style-hover="color:var(--bad)">Cerrar sesión</div>
+            </div>
+
+            <div style="font:400 11.5px/1.6 'Hanken Grotesk',sans-serif;color:var(--ink3);padding:4px 6px 0;text-wrap:pretty">Juega con responsabilidad. Las probabilidades del modelo son estimaciones, no garantías. 18+</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+        <div style="position:relative;z-index:2;flex:none;padding:0 14px 30px">
+          <div style="display:flex;align-items:center;gap:2px;height:66px;border-radius:33px;background:var(--glass);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--stroke);box-shadow:0 12px 34px var(--shadow);padding:0 8px">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+              <div onClick="{{ t.pick }}" style="{{ t.style }}">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="{{ t.iconStyle }}">
+                  <path d="{{ t.d }}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                <div style="{{ t.labelStyle }}">{{ t.name }}</div>
+                <sc-if value="{{ t.badge }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;top:8px;right:10px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fff;font:700 10px/17px 'Hanken Grotesk',sans-serif;text-align:center">{{ t.badgeCount }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </x-import>
+
+  <div style="max-width:420px;font:400 12.5px/1.6 'Hanken Grotesk',sans-serif;color:var(--ink3);text-align:center;text-wrap:pretty">Interfaz en español con terminología de apuestas en inglés (parlay, EV, odds). Toca mercados en un partido para añadirlos al builder; el auditor revisa correlación, varianza y EV antes de apostar.</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:520,&quot;height&quot;:1040}}">
+const MATCHES = [
+  { id:'m1', league:'La Liga', time:'16:15', home:'Real Betis', away:'Girona', ev:5.2, ph:52, pd:26, pa:22, o:['1.95','3.40','3.80'],
+    stats:[{label:'xG (últ. 5)',a:'1.84',b:'1.21',pa:64,pb:42},{label:'Posesión',a:'56%',b:'48%',pa:56,pb:48},{label:'Forma',a:'GGEPG',b:'EPGEP',pa:70,pb:44},{label:'Goles esp.',a:'1.7',b:'1.1',pa:62,pb:40}],
+    markets:[
+      { id:'m1a',name:'Betis gana (1X2)',odds:1.95,prob:'54%',p:0.54,ev:'+5.2%',pos:true,reason:'El modelo da 54% al local frente al 51% implícito. Betis mantiene 1.84 xG en casa y Girona concede 1.6 goles esperados como visitante en las últimas cinco jornadas.',facts:[{k:'xG local',v:'1.84'},{k:'xGA visita',v:'1.61'},{k:'Muestra',v:'18 partidos'}] },
+      { id:'m1b',name:'Más de 2.5 goles',odds:1.72,prob:'61%',p:0.61,ev:'+4.9%',pos:true,reason:'Siete de los últimos ocho partidos entre estos equipos superaron 2.5 goles. Ambos presionan alto y conceden ocasiones claras.',facts:[{k:'Últ. 8',v:'7 over'},{k:'Media',v:'3.1 goles'},{k:'Ritmo',v:'alto'}] },
+      { id:'m1c',name:'Ambos marcan',odds:1.68,prob:'57%',p:0.57,ev:'-4.2%',pos:false,reason:'Correlaciona fuerte con Más de 2.5 goles. Combinar ambos infla la cuota aparente sin añadir probabilidad real.',facts:[{k:'Correlación',v:'0.71'},{k:'Prob. real',v:'57%'},{k:'Implícita',v:'60%'}] },
+      { id:'m1d',name:'Isco 1+ tiro a puerta',odds:2.05,prob:'53%',p:0.53,ev:'+8.6%',pos:true,reason:'Isco promedia 1.9 tiros a puerta por 90 minutos y Girona permite el segundo mayor volumen de tiros de la liga.',facts:[{k:'Tiros/90',v:'1.9'},{k:'Minutos',v:'78 avg'},{k:'Rival',v:'2º más permisivo'}] },
+      { id:'m1e',name:'Menos de 9.5 córners',odds:1.88,prob:'49%',p:0.49,ev:'-7.9%',pos:false,reason:'Mercado con margen alto de la casa (6.4%) y muestra pequeña. El modelo no encuentra ventaja.',facts:[{k:'Margen casa',v:'6.4%'},{k:'Muestra',v:'11 partidos'},{k:'Edge',v:'ninguno'}] }
+    ] },
+  { id:'m2', league:'La Liga', time:'18:30', home:'Athletic Club', away:'Osasuna', ev:2.8, ph:49, pd:28, pa:23, o:['1.80','3.50','4.60'],
+    stats:[{label:'xG (últ. 5)',a:'1.52',b:'0.98',pa:58,pb:38},{label:'Posesión',a:'53%',b:'45%',pa:53,pb:45},{label:'Forma',a:'GEGGP',b:'PEGPE',pa:64,pb:38},{label:'Goles esp.',a:'1.5',b:'0.9',pa:56,pb:34}],
+    markets:[
+      { id:'m2a',name:'Athletic gana (1X2)',odds:1.80,prob:'57%',p:0.57,ev:'+2.8%',pos:true,reason:'San Mamés es la tercera mejor localía de la liga y Osasuna acumula un punto en sus últimas cuatro visitas.',facts:[{k:'Puntos casa',v:'2.4/partido'},{k:'Visita rival',v:'1 pt en 4'},{k:'Bajas',v:'2 defensas'}] },
+      { id:'m2b',name:'Menos de 2.5 goles',odds:1.65,prob:'63%',p:0.63,ev:'+3.9%',pos:true,reason:'Osasuna cierra líneas y el promedio combinado es 2.1 goles. El mercado sobrevalora el escenario abierto.',facts:[{k:'Media',v:'2.1 goles'},{k:'Under %',v:'68%'},{k:'Ritmo',v:'bajo'}] },
+      { id:'m2c',name:'Athletic -1 hándicap',odds:2.90,prob:'31%',p:0.31,ev:'-10.1%',pos:false,reason:'Requiere dos goles de diferencia; el modelo solo lo ve en 31% de las simulaciones. Cuota insuficiente.',facts:[{k:'Prob. modelo',v:'31%'},{k:'Necesaria',v:'34.5%'},{k:'Edge',v:'negativo'}] }
+    ] },
+  { id:'m3', league:'Premier', time:'21:00', home:'Brighton', away:'Newcastle', ev:6.4, ph:41, pd:27, pa:32, o:['2.35','3.45','2.95'],
+    stats:[{label:'xG (últ. 5)',a:'1.66',b:'1.58',pa:60,pb:57},{label:'Posesión',a:'58%',b:'47%',pa:58,pb:47},{label:'Forma',a:'GPGEG',b:'GGEPG',pa:66,pb:62},{label:'Goles esp.',a:'1.6',b:'1.5',pa:58,pb:54}],
+    markets:[
+      { id:'m3a',name:'Más de 2.5 goles',odds:1.60,prob:'68%',p:0.68,ev:'+8.8%',pos:true,reason:'Los dos equipos están entre los cinco de mayor xG combinado. El mercado tarda en ajustar el ritmo de Brighton tras el cambio táctico.',facts:[{k:'xG sumado',v:'3.24'},{k:'Over %',v:'71%'},{k:'Tendencia',v:'subiendo'}] },
+      { id:'m3b',name:'Empate',odds:3.45,prob:'27%',p:0.27,ev:'-6.9%',pos:false,reason:'Partido con alta varianza ofensiva; el empate es menos probable que en un duelo cerrado.',facts:[{k:'Prob. modelo',v:'27%'},{k:'Implícita',v:'29%'},{k:'Edge',v:'negativo'}] },
+      { id:'m3c',name:'Isak 1+ gol',odds:2.20,prob:'49%',p:0.49,ev:'+7.8%',pos:true,reason:'Isak convierte 0.62 goles por 90 y Brighton concede 1.4 xGA en casa. La cuota no refleja su papel de referencia.',facts:[{k:'Goles/90',v:'0.62'},{k:'xGA rival',v:'1.40'},{k:'Titular',v:'92%'}] }
+    ] },
+  { id:'m4', league:'Serie A', time:'20:45', home:'Atalanta', away:'Bologna', ev:1.6, ph:55, pd:24, pa:21, o:['1.75','3.70','4.40'],
+    stats:[{label:'xG (últ. 5)',a:'2.01',b:'1.14',pa:70,pb:40},{label:'Posesión',a:'54%',b:'50%',pa:54,pb:50},{label:'Forma',a:'GGGEP',b:'EGPEG',pa:74,pb:50},{label:'Goles esp.',a:'1.9',b:'1.0',pa:68,pb:36}],
+    markets:[
+      { id:'m4a',name:'Atalanta gana (1X2)',odds:1.75,prob:'58%',p:0.58,ev:'+1.6%',pos:true,reason:'Ventaja pequeña pero real: 2.01 xG en casa contra una defensa que concede 1.5.',facts:[{k:'xG local',v:'2.01'},{k:'xGA rival',v:'1.50'},{k:'Edge',v:'bajo'}] },
+      { id:'m4b',name:'Atalanta y over 2.5',odds:2.45,prob:'42%',p:0.42,ev:'+2.9%',pos:true,reason:'Combinación correlacionada positivamente: cuando Atalanta gana en casa, el 76% de los partidos pasa de 2.5 goles.',facts:[{k:'Correlación',v:'+0.58'},{k:'Prob. conj.',v:'42%'},{k:'Implícita',v:'41%'}] }
+    ] }
+];
+
+const ALERTS = [
+  { id:'a1',time:'16:15',league:'La Liga',market:'Isco 1+ tiro a puerta',match:'Betis vs Girona',ev:'+8.6%',conf:78,odds:2.05,p:0.53,mid:'m1' },
+  { id:'a2',time:'21:00',league:'Premier',market:'Más de 2.5 goles',match:'Brighton vs Newcastle',ev:'+8.8%',conf:84,odds:1.60,p:0.68,mid:'m3' },
+  { id:'a3',time:'21:00',league:'Premier',market:'Isak 1+ gol',match:'Brighton vs Newcastle',ev:'+7.8%',conf:71,odds:2.20,p:0.49,mid:'m3' },
+  { id:'a4',time:'18:30',league:'La Liga',market:'Menos de 2.5 goles',match:'Athletic vs Osasuna',ev:'+3.9%',conf:66,odds:1.65,p:0.63,mid:'m2' }
+];
+
+const HISTORY = [
+  { id:'h1',state:'Ganada',title:'Parlay 3 legs · La Liga',day:'12 sep',stake:160000,amount:384000,odds:'3.40',k:'win' },
+  { id:'h2',state:'Abierta',title:'Over 2.5 · Brighton vs Newcastle',day:'hoy 21:00',stake:100000,amount:100000,odds:'1.60',k:'open' },
+  { id:'h3',state:'Perdida',title:'Parlay 4 legs · multideporte',day:'10 sep',stake:120000,amount:-120000,odds:'7.20',k:'loss' },
+  { id:'h4',state:'Ganada',title:'Athletic gana · hándicap 0',day:'8 sep',stake:140000,amount:112000,odds:'1.80',k:'win' },
+  { id:'h5',state:'Ganada',title:'Parlay 2 legs · Serie A',day:'6 sep',stake:200000,amount:248000,odds:'2.24',k:'win' }
+];
+
+const CURRENCIES = [
+  { code:'COP', sym:'$',  rate:1,       loc:'es-CO', dec:0 },
+  { code:'USD', sym:'US$',rate:1/4000,  loc:'en-US', dec:2 },
+  { code:'EUR', sym:'€',  rate:1/4350,  loc:'es-ES', dec:2 },
+  { code:'MXN', sym:'MX$',rate:1/215,   loc:'es-MX', dec:2 },
+  { code:'BRL', sym:'R$', rate:1/740,   loc:'pt-BR', dec:2 }
+];
+
+const SPARK = [22,30,26,38,34,44,40,52,46,58,54,66];
+const LEAGUES = ['La Liga','Premier','Serie A','Bundesliga','Ligue 1','Champions'];
+const RISKS = [
+  { id:'cons',name:'Conservador',kelly:'1/8',desc:'Stakes pequeños, solo EV alto y máximo 3 legs.' },
+  { id:'bal',name:'Balanceado',kelly:'1/4',desc:'Equilibrio entre frecuencia y varianza. Recomendado.' },
+  { id:'agr',name:'Agresivo',kelly:'1/2',desc:'Más parlays y más varianza. Requiere bankroll estable.' }
+];
+
+class Component extends DCLogic {
+  state = {
+    theme: 'light', screen: 'login', matchId: 'm1', openMarket: null,
+    currency: 'COP', name: '', email: '', pass: '', agree: false, authMode: 'login',
+    legs: [
+      { id:'m1b', mid:'m1', market:'Más de 2.5 goles', match:'Betis vs Girona', odds:1.72, p:0.61 },
+      { id:'m1c', mid:'m1', market:'Ambos marcan', match:'Betis vs Girona', odds:1.68, p:0.57 },
+      { id:'m3a', mid:'m3', market:'Más de 2.5 goles', match:'Brighton vs Newcastle', odds:1.60, p:0.68 }
+    ],
+    bankroll: 1200000, stakePct: 4, league: 'Todas', alertFilter: 'Todos',
+    onbStep: 0, risk: 'bal', onbLeagues: ['La Liga','Premier'],
+    settings: { alerts:true, correl:true, limits:true, dark:false }, placed:false
+  };
+
+  componentDidMount(){ this.applyTheme(this.state.theme); }
+  applyTheme(t){ if (typeof document !== 'undefined') document.body.dataset.theme = t; }
+  setTheme = (t) => { this.applyTheme(t); this.setState(s => ({ theme:t, settings:{...s.settings, dark: t==='dark'} })); };
+
+  cur = () => CURRENCIES.find(c => c.code === this.state.currency) || CURRENCIES[0];
+  fmt = (nCop) => {
+    const c = this.cur(); const v = nCop * c.rate;
+    const s = Math.abs(v).toLocaleString(c.loc, { minimumFractionDigits:c.dec, maximumFractionDigits:c.dec });
+    return (v < 0 ? '-' : '') + c.sym + s;
+  };
+  pct = (n) => (n*100).toFixed(1) + '%';
+
+  toggleLeg = (mid, mk) => this.setState(s => {
+    const has = s.legs.some(l => l.id === mk.id);
+    return { placed:false, legs: has ? s.legs.filter(l => l.id !== mk.id)
+      : [...s.legs, { id:mk.id, mid, market:mk.name, match:this.matchName(mid), odds:mk.odds, p:mk.p }] };
+  });
+  matchName = (mid) => { const m = MATCHES.find(x => x.id===mid); return m ? m.home + ' vs ' + m.away : ''; };
+
+  renderVals() {
+    const S = this.state, dark = S.theme === 'dark';
+    const sel = MATCHES.find(m => m.id === S.matchId) || MATCHES[0];
+    const legs = S.legs;
+    const total = legs.reduce((a,l) => a*l.odds, 1);
+    const modelP = legs.reduce((a,l) => a*l.p, 1);
+    const implied = legs.length ? 1/total : 0;
+    const ev = legs.length ? modelP*total - 1 : 0;
+    const risk = RISKS.find(r => r.id === S.risk) || RISKS[1];
+    const stake = S.bankroll * S.stakePct/100;
+
+    const seen = {}; const dupMid = [];
+    legs.forEach(l => { if (seen[l.mid]) { if(!dupMid.includes(l.mid)) dupMid.push(l.mid); } seen[l.mid]=true; });
+    const flaggedIds = legs.filter(l => dupMid.includes(l.mid)).map(l => l.id);
+
+    const checks = [];
+    const dotOK = 'width:9px;height:9px;border-radius:50%;background:var(--good);margin-top:5px;flex:none';
+    const dotWarn = 'width:9px;height:9px;border-radius:50%;background:var(--warn);margin-top:5px;flex:none';
+    const dotBad = 'width:9px;height:9px;border-radius:50%;background:var(--bad);margin-top:5px;flex:none';
+    if (dupMid.length) checks.push({ dot:dotWarn, title:'Legs correlacionadas', body:'Dos selecciones del mismo partido ('+this.matchName(dupMid[0])+'). La cuota combinada asume independencia, así que el valor real es menor al mostrado.' });
+    else checks.push({ dot:dotOK, title:'Sin correlación oculta', body:'Cada leg viene de un partido distinto. La multiplicación de cuotas es válida.' });
+    if (legs.length > 4) checks.push({ dot:dotWarn, title:'Varianza alta', body:legs.length+' legs reducen la probabilidad de acierto por debajo del 20%. Considera dividir en dos apuestas.' });
+    else if (legs.length >= 2) checks.push({ dot:dotOK, title:'Tamaño razonable', body:legs.length+' legs mantienen la probabilidad de acierto en '+this.pct(modelP)+'.' });
+    else checks.push({ dot:dotWarn, title:'Parlay incompleto', body:'Añade al menos dos legs desde un partido o desde las alertas de valor.' });
+    if (ev < 0) checks.push({ dot:dotBad, title:'EV negativo', body:'Esperanza matemática de '+(ev*100).toFixed(1)+'%. A largo plazo esta apuesta pierde dinero.' });
+    else checks.push({ dot:dotOK, title:'EV positivo', body:'Esperanza de +'+(ev*100).toFixed(1)+'% según el modelo. Margen de la casa ya descontado.' });
+    if (stake > S.bankroll*0.05) checks.push({ dot:dotWarn, title:'Stake sobre el límite', body:'Tu perfil '+risk.name.toLowerCase()+' sugiere no pasar del 5% del bankroll ('+this.fmt(S.bankroll*0.05)+').' });
+    else checks.push({ dot:dotOK, title:'Stake dentro del límite', body:this.pct(S.stakePct/100)+' del bankroll, consistente con Kelly '+risk.kelly+'.' });
+
+    const warns = checks.filter(c => c.dot !== dotOK).length;
+    const ok = warns === 0;
+    const auditBg = ok ? 'var(--good-soft)' : (ev<0 ? 'var(--bad-soft)' : 'var(--warn-soft)');
+    const auditCol = ok ? 'var(--good)' : (ev<0 ? 'var(--bad)' : 'var(--warn)');
+
+    const filters = ['Todas', ...LEAGUES.slice(0,4)];
+    const chip = (active) => 'height:38px;padding:0 16px;border-radius:19px;display:flex;align-items:center;white-space:nowrap;cursor:pointer;font:600 13px/1 \'Hanken Grotesk\',sans-serif;'
+      + (active ? 'background:var(--ink);color:var(--bg);border:1px solid var(--ink)' : 'background:var(--glass);color:var(--ink2);border:1px solid var(--stroke);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)');
+    const evPill = (v) => 'padding:6px 11px;border-radius:999px;font:600 12px/1 \'Hanken Grotesk\',sans-serif;'
+      + (v>=4 ? 'background:var(--good-soft);color:var(--good)' : v>0 ? 'background:var(--accent-soft);color:var(--accent)' : 'background:var(--bad-soft);color:var(--bad)');
+
+    const emailOk = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(S.email);
+    const authOk = S.authMode==='login'
+      ? (emailOk && S.pass.length>=8)
+      : (emailOk && S.pass.length>=8 && S.name.trim().length>1 && S.agree);
+
+    const visible = MATCHES.filter(m => S.league==='Todas' || m.league===S.league);
+    const aFiltered = ALERTS.filter(a => S.alertFilter==='Todos' || (S.alertFilter==='EV > 5%' ? parseFloat(a.ev)>5 : a.conf>=75));
+
+    const tabDef = [
+      { id:'home', name:'Hoy', d:'M3.5 5.5h13v11h-13zM3.5 9h13M7 2.8v2.8M13 2.8v2.8M6.6 12.4h2M11.4 12.4h2' },
+      { id:'builder', name:'Parlay', d:'M3 6.2l7-3.2 7 3.2-7 3.2-7-3.2zM3 10l7 3.2 7-3.2M3 13.8l7 3.2 7-3.2' },
+      { id:'alerts', name:'Valor', d:'M11.2 2.4L5 10.6h3.6l-.9 6.9 6.3-8.7h-3.6l.8-6.4z' },
+      { id:'bets', name:'Apuestas', d:'M3 3v14h14M5.6 13.6l3.2-4 2.4 2.2 3.4-5.6M12.4 6.2h2.4v2.4' },
+      { id:'profile', name:'Perfil', d:'M10 9.2a3.1 3.1 0 100-6.2 3.1 3.1 0 000 6.2zM3.8 17.2c0-3.1 2.8-5.2 6.2-5.2s6.2 2.1 6.2 5.2' }
+    ];
+    const tabs = tabDef.map(t => {
+      const active = S.screen === t.id || (t.id==='home' && S.screen==='match');
+      return { name:t.name, pick:() => this.setState({ screen:t.id }),
+        style:'flex:1;height:50px;border-radius:25px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative;'
+          + (active ? 'background:var(--accent-soft)' : ''),
+        d: t.d, iconStyle:'display:block;color:'+(active?'var(--accent)':'var(--ink3)'),
+        labelStyle:'font:600 10px/1 \'Hanken Grotesk\',sans-serif;color:'+(active?'var(--accent)':'var(--ink3)'),
+        badge: t.id==='builder' && legs.length>0, badgeCount: legs.length };
+    });
+
+    const onbCopy = [
+      { t:'Tu bankroll manda', b:'Todo el análisis se calibra a tu capital. El stake sugerido nunca superará tu límite.' },
+      { t:'Elige tus ligas', b:'Solo recibirás alertas de valor de las competiciones que sigues.' },
+      { t:'Perfil de riesgo', b:'Define cuánto de tu ventaja quieres jugar en cada apuesta.' }
+    ];
+    const onb = onbCopy[S.onbStep] || onbCopy[0];
+    const dotS = (on) => 'width:'+(on?26:8)+'px;height:8px;border-radius:4px;background:'+(on?'var(--accent)':'var(--hair)')+';transition:width .3s';
+
+    const themeBtn = (on) => 'height:34px;padding:0 16px;border-radius:999px;display:flex;align-items:center;cursor:pointer;font:600 12.5px/1 \'Hanken Grotesk\',sans-serif;'
+      + (on ? 'background:var(--ink);color:var(--bg)' : 'color:var(--ink2)');
+
+    return {
+      isDark: dark, setLight:() => this.setTheme('light'), setDark:() => this.setTheme('dark'),
+      lightBtn: themeBtn(!dark), darkBtn: themeBtn(dark),
+      isOnboarding: S.screen==='onb', isHome: S.screen==='home', isMatch: S.screen==='match',
+      isBuilder: S.screen==='builder', isAlerts: S.screen==='alerts', isBets: S.screen==='bets', isProfile: S.screen==='profile',
+      isAuth: S.screen==='auth', isLogin: S.screen==='auth' && S.authMode==='login', isRegister: S.screen==='auth' && S.authMode==='register',
+      showTabs: S.screen!=='onb' && S.screen!=='auth' && S.screen!=='login', tabs,
+
+      isSplash: S.screen==='login',
+      enterAuth: (m) => this.setState({ screen:'auth', authMode:m }),
+      goLogin: () => this.setState({ screen:'auth', authMode:'login' }),
+      goRegister: () => this.setState({ screen:'auth', authMode:'register', pass:'' }),
+      authTitle: S.authMode==='login' ? 'Bienvenido de vuelta' : 'Crea tu cuenta',
+      authSub: S.authMode==='login' ? 'Entra para ver los partidos de hoy y tus parlays guardados.' : 'Sin comisiones. Analiza, audita y registra tus apuestas.',
+      authCta: S.authMode==='login' ? 'Iniciar sesión' : 'Crear cuenta',
+      authAltQ: S.authMode==='login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?',
+      authAltCta: S.authMode==='login' ? 'Regístrate' : 'Inicia sesión',
+      authAlt: () => this.setState(s => ({ authMode: s.authMode==='login' ? 'register' : 'login', pass:'' })),
+      googleCta: S.authMode==='login' ? 'Continuar con Google' : 'Registrarse con Google',
+      name: S.name, email: S.email, pass: S.pass,
+      onName: (e) => this.setState({ name:e.target.value }),
+      onEmail: (e) => this.setState({ email:e.target.value }),
+      onPass: (e) => this.setState({ pass:e.target.value }),
+      emailErr: S.email.length>0 && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(S.email),
+      passErr: S.pass.length>0 && S.pass.length<8,
+      agree: S.agree, toggleAgree: () => this.setState(s => ({ agree:!s.agree })),
+      agreeBox: 'width:22px;height:22px;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;font:700 12px/1 \'Hanken Grotesk\',sans-serif;color:#fff;'
+        + (S.agree ? 'background:var(--accent);border:1px solid var(--accent)' : 'background:transparent;border:1.5px solid var(--stroke)'),
+      agreeMark: S.agree ? '✓' : '',
+      authValid: authOk,
+      authBtnStyle: 'margin-top:4px;height:54px;border-radius:27px;display:flex;align-items:center;justify-content:center;font:600 16px/1 \'Hanken Grotesk\',sans-serif;cursor:pointer;'
+        + (authOk ? 'background:var(--accent);color:#fff;box-shadow:0 10px 26px var(--accent-soft)' : 'background:var(--hair);color:var(--ink3)'),
+      submitAuth: () => authOk && this.setState({ screen: S.authMode==='register' ? 'onb' : 'home', onbStep:0 }),
+      googleAuth: () => this.setState({ screen:'home' }),
+      inputStyle: 'width:100%;box-sizing:border-box;height:52px;padding:0 18px;border-radius:18px;background:var(--glass2);border:1px solid var(--stroke);color:var(--ink);font:500 15px/1 \'Hanken Grotesk\',sans-serif;outline:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)',
+      emailStyle: 'width:100%;box-sizing:border-box;height:52px;padding:0 18px;border-radius:18px;background:var(--glass2);border:1px solid '+(S.email.length>0 && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(S.email) ? 'var(--bad)' : 'var(--stroke)')+';color:var(--ink);font:500 15px/1 \'Hanken Grotesk\',sans-serif;outline:none',
+      passStyle: 'width:100%;box-sizing:border-box;height:52px;padding:0 18px;border-radius:18px;background:var(--glass2);border:1px solid '+(S.pass.length>0 && S.pass.length<8 ? 'var(--bad)' : 'var(--stroke)')+';color:var(--ink);font:500 15px/1 \'Hanken Grotesk\',sans-serif;outline:none',
+
+      currency: S.currency,
+      currencyOpts: CURRENCIES.map(c => ({ code:c.code, style: chip(S.currency===c.code), pick:() => this.setState({ currency:c.code }) })),
+      bankroll: S.bankroll, bankrollFmt: this.fmt(S.bankroll),
+      onBankroll: (e) => this.setState({ bankroll: +e.target.value }),
+
+      onb1: S.onbStep===0, onb2: S.onbStep===1, onb3: S.onbStep===2,
+      onbTitle: onb.t, onbBody: onb.b, onbCta: S.onbStep===2 ? 'Empezar' : 'Continuar',
+      onbNext: () => S.onbStep===2 ? this.setState({screen:'home', onbStep:0}) : this.setState({ onbStep:S.onbStep+1 }),
+      skipOnb: () => this.setState({ screen:'home', onbStep:0 }),
+      dot1: dotS(S.onbStep===0), dot2: dotS(S.onbStep===1), dot3: dotS(S.onbStep===2),
+      leagueOpts: LEAGUES.map(n => ({ name:n, chipStyle: chip(S.onbLeagues.includes(n)),
+        toggle:() => this.setState(s => ({ onbLeagues: s.onbLeagues.includes(n) ? s.onbLeagues.filter(x=>x!==n) : [...s.onbLeagues,n] })) })),
+      riskOpts: RISKS.map(r => ({ ...r, pick:() => this.setState({ risk:r.id, stakePct: r.id==='cons'?2:r.id==='bal'?4:8 }),
+        cardStyle:'padding:17px;border-radius:22px;cursor:pointer;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid '+(S.risk===r.id?'var(--accent)':'var(--stroke)')+';box-shadow:0 6px 20px var(--shadow)' })),
+      riskName: risk.name, kellyLabel: risk.kelly,
+
+      leagueFilters: filters.map(n => ({ name:n, style: chip(S.league===n), pick:() => this.setState({ league:n }) })),
+      matchCountLabel: visible.length + ' partidos · ordenados por EV',
+      matches: visible.map(m => ({
+        league:m.league, time:m.time, home:m.home, away:m.away,
+        evLabel:'EV +'+m.ev.toFixed(1)+'%', evStyle: evPill(m.ev),
+        quick:[{k:'1',v:m.o[0]},{k:'X',v:m.o[1]},{k:'2',v:m.o[2]}],
+        barHome:'width:'+m.ph+'%;background:var(--accent)', barDraw:'width:'+m.pd+'%;background:var(--ink3)',
+        modelLabel:m.ph+'-'+m.pd+'-'+m.pa,
+        open:() => this.setState({ screen:'match', matchId:m.id, openMarket:null })
+      })),
+      dailyLegs: [
+        { market:'Más de 2.5 goles', match:'Brighton vs Newcastle', odds:'1.60' },
+        { market:'Isco 1+ tiro a puerta', match:'Betis vs Girona', odds:'2.05' },
+        { market:'Menos de 2.5 goles', match:'Athletic vs Osasuna', odds:'1.65' }
+      ],
+      dailyOdds: '5.41', dailyEv: '6.1',
+      loadDaily: () => this.setState({ screen:'builder', placed:false, legs:[
+        { id:'m3a', mid:'m3', market:'Más de 2.5 goles', match:'Brighton vs Newcastle', odds:1.60, p:0.68 },
+        { id:'m1d', mid:'m1', market:'Isco 1+ tiro a puerta', match:'Betis vs Girona', odds:2.05, p:0.53 },
+        { id:'m2b', mid:'m2', market:'Menos de 2.5 goles', match:'Athletic vs Osasuna', odds:1.65, p:0.63 }
+      ] }),
+
+      goHome: () => this.setState({ screen:'home' }),
+      sel: {
+        league:sel.league, time:sel.time, home:sel.home, away:sel.away,
+        probs:[{k:'Local',v:sel.ph+'%',o:sel.o[0]},{k:'Empate',v:sel.pd+'%',o:sel.o[1]},{k:'Visita',v:sel.pa+'%',o:sel.o[2]}],
+        stats: sel.stats.map(s => ({ label:s.label, a:s.a, b:s.b,
+          barA:'width:'+s.pa+'%;height:100%;border-radius:4px;background:var(--accent)',
+          barB:'width:'+s.pb+'%;height:100%;border-radius:4px;background:var(--ink3)' })),
+        markets: sel.markets.map(mk => {
+          const on = legs.some(l => l.id===mk.id);
+          return { name:mk.name, prob:mk.prob, ev:mk.ev, odds:mk.odds.toFixed(2), reason:mk.reason, facts:mk.facts,
+            open: S.openMarket===mk.id,
+            wrapStyle:'background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid '+(on?'var(--accent)':'var(--stroke)')+';border-radius:24px;padding:15px 14px 15px 17px;box-shadow:0 8px 24px var(--shadow)',
+            evStyle:'padding:4px 9px;border-radius:999px;font:600 11px/1 \'Hanken Grotesk\',sans-serif;'+(mk.pos?'background:var(--good-soft);color:var(--good)':'background:var(--bad-soft);color:var(--bad)'),
+            oddsStyle:'min-width:64px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;font:600 16px/1 \'Hanken Grotesk\',sans-serif;'
+              + (on ? 'background:var(--accent);color:#fff' : 'background:var(--glass2);border:1px solid var(--hair);color:var(--ink)'),
+            toggle:() => this.toggleLeg(sel.id, mk),
+            expand:() => this.setState(s => ({ openMarket: s.openMarket===mk.id ? null : mk.id })) };
+        })
+      },
+
+      legs: legs.map(l => ({ market:l.market, match:l.match, odds:l.odds.toFixed(2),
+        flagged: flaggedIds.includes(l.id), flagText:'Correlacionada con otra leg del mismo partido',
+        remove:() => this.setState(s => ({ placed:false, legs:s.legs.filter(x => x.id!==l.id) })) })),
+      legCountLabel: legs.length ? legs.length+' legs seleccionadas' : 'Parlay vacío',
+      totalOdds: legs.length ? total.toFixed(2) : '—',
+      impliedProb: legs.length ? this.pct(implied) : '—',
+      modelProb: legs.length ? this.pct(modelP) : '—',
+      evLabel: legs.length ? (ev>=0?'EV +':'EV ')+(ev*100).toFixed(1)+'%' : 'EV —',
+      evBadge: 'padding:9px 14px;border-radius:999px;font:600 13.5px/1 \'Hanken Grotesk\',sans-serif;'+(ev>=0?'background:var(--good-soft);color:var(--good)':'background:var(--bad-soft);color:var(--bad)'),
+      checks,
+      auditStyle:'border-radius:26px;padding:18px;background:'+auditBg+';border:1px solid var(--stroke);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)',
+      auditIconStyle:'width:22px;height:22px;border-radius:50%;background:'+auditCol+';color:var(--bg);display:flex;align-items:center;justify-content:center;font:700 12px/1 \'Hanken Grotesk\',sans-serif',
+      auditIcon: ok ? '✓' : '!',
+      auditTitle: ok ? 'Parlay limpio · sin errores detectados' : warns+' aviso'+(warns>1?'s':'')+' antes de apostar',
+      hasFix: dupMid.length>0 || ev<0,
+      fixLabel: dupMid.length ? 'Quitar la leg correlacionada' : 'Quitar legs de EV negativo',
+      applyFix: () => this.setState(s => {
+        if (dupMid.length) { const drop = flaggedIds[flaggedIds.length-1]; return { legs: s.legs.filter(l => l.id!==drop) }; }
+        return { legs: s.legs.filter(l => l.p*l.odds > 1) };
+      }),
+      stakePct: S.stakePct, stakePctLabel: S.stakePct+'%', stakeFmt: this.fmt(stake),
+      onStake: (e) => this.setState({ stakePct:+e.target.value, placed:false }),
+      returnFmt: legs.length ? this.fmt(stake*total) : '—',
+      placeLabel: S.placed ? 'Apuesta registrada ✓' : (legs.length<2 ? 'Añade otra leg' : 'Registrar '+this.fmt(stake)),
+      placeStyle:'margin-top:14px;height:54px;border-radius:27px;display:flex;align-items:center;justify-content:center;font:600 16px/1 \'Hanken Grotesk\',sans-serif;cursor:pointer;'
+        + (legs.length<2 ? 'background:var(--hair);color:var(--ink3)' : S.placed ? 'background:var(--good-soft);color:var(--good);border:1px solid var(--good)' : 'background:var(--accent);color:#fff;box-shadow:0 10px 26px var(--accent-soft)'),
+      placeBet: () => legs.length>=2 && this.setState({ placed:true }),
+
+      alertFilters: ['Todos','EV > 5%','Confianza alta'].map(n => ({ name:n, style: chip(S.alertFilter===n), pick:() => this.setState({ alertFilter:n }) })),
+      alerts: aFiltered.map(a => {
+        const inParlay = legs.some(l => l.id===a.id);
+        return { time:a.time, league:a.league, market:a.market, match:a.match, ev:a.ev, conf:a.conf+'%',
+          evStyle: evPill(parseFloat(a.ev)),
+          glow:'position:absolute;top:-70px;right:-50px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,var(--b1),transparent 70%);filter:blur(26px);pointer-events:none',
+          confBar:'width:'+a.conf+'%;height:100%;border-radius:3px;background:var(--accent)',
+          cta: inParlay ? 'Añadida' : 'Añadir',
+          add:() => this.setState(s => s.legs.some(l=>l.id===a.id) ? {} : ({ placed:false, legs:[...s.legs,{ id:a.id, mid:a.mid, market:a.market, match:a.match, odds:a.odds, p:a.p }] })) };
+      }),
+
+      spark: SPARK.map((h,i) => ({ style:'width:7px;height:'+h+'px;border-radius:4px;background:'+(i>8?'var(--accent)':'var(--hair)') })),
+      betStats: [{k:'Acierto',v:'58%'},{k:'ROI',v:'+9.4%'},{k:'Apuestas',v:'31'}],
+      plFmt: '+' + this.fmt(736000),
+      history: HISTORY.map(h => ({ state:h.state, title:h.title,
+        sub: h.day + ' · stake ' + this.fmt(h.stake),
+        amount: (h.amount>0?'+':'') + this.fmt(h.amount), odds:'cuota '+h.odds,
+        pill:'padding:7px 11px;border-radius:999px;flex:none;font:600 11px/1 \'Hanken Grotesk\',sans-serif;'
+          + (h.k==='win'?'background:var(--good-soft);color:var(--good)':h.k==='loss'?'background:var(--bad-soft);color:var(--bad)':'background:var(--accent-soft);color:var(--accent)'),
+        amountStyle:'font:600 15px/1 \'Hanken Grotesk\',sans-serif;color:'+(h.k==='win'?'var(--good)':h.k==='loss'?'var(--bad)':'var(--ink)') })),
+
+      weeklyLimit: this.fmt(S.bankroll*0.15), exposure: this.fmt(stake),
+      settings: [
+        { key:'alerts', name:'Alertas de valor', desc:'Push cuando aparece EV superior al 5%' },
+        { key:'correl', name:'Auditor de correlación', desc:'Bloquea parlays con legs dependientes' },
+        { key:'limits', name:'Límite de stake', desc:'Máximo 5% del bankroll por apuesta' },
+        { key:'dark', name:'Modo oscuro', desc:'Cambia el tema de la interfaz' }
+      ].map(s => {
+        const on = S.settings[s.key];
+        return { name:s.name, desc:s.desc,
+          trackStyle:'width:50px;height:30px;border-radius:15px;flex:none;padding:3px;box-sizing:border-box;transition:background .2s;background:'+(on?'var(--accent)':'var(--hair)'),
+          knobStyle:'width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .22s;transform:translateX('+(on?20:0)+'px)',
+          toggle:() => { if (s.key==='dark') this.setTheme(on?'light':'dark'); else this.setState(st => ({ settings:{...st.settings, [s.key]:!on} })); } };
+      }),
+      replayOnb: () => this.setState({ screen:'onb', onbStep:0 }),
+      logout: () => this.setState({ screen:'login', pass:'', authMode:'login' })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
