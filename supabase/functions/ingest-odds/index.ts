@@ -16,8 +16,8 @@ import { fetchOdds, oddsCallCost, type OddsEvent } from '../_shared/providers.ts
 import { QuotaExceededError, reserveQuota, trackRun } from '../_shared/quota.ts';
 
 const COMPETITIONS = [
-  { sportKey: 'soccer_spain_la_liga', leagueId: 'api-football:140' },
-  { sportKey: 'soccer_epl', leagueId: 'api-football:39' },
+  { sportKey: 'soccer_spain_la_liga', leagueId: 'football-data:PD' },
+  { sportKey: 'soccer_epl', leagueId: 'football-data:PL' },
 ];
 
 /** Corto a propósito: cada mercado extra multiplica el coste en créditos. */

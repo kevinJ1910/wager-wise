@@ -123,7 +123,7 @@ describe('validación de entorno', () => {
   const serverEnv = {
     SUPABASE_URL: 'https://abc.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'x'.repeat(40),
-    API_FOOTBALL_KEY: 'y'.repeat(32),
+    FOOTBALL_DATA_API_KEY: 'y'.repeat(32),
     ODDS_API_KEY: 'z'.repeat(32),
     GEMINI_API_KEY: 'g'.repeat(39),
   };

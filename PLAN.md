@@ -86,12 +86,21 @@ wager-wise/
 
 | Fuente | Uso | Límite |
 |---|---|---|
-| **API-Football** (api-sports.io) | Fixtures, resultados históricos, estadísticas, forma, H2H, lesiones, alineaciones | 100 req/día |
+| **football-data.org** | Fixtures y resultados: calendario próximo e histórico reciente, en la misma llamada | 10 req/min (sin tope diario) |
 | **The Odds API** | Cuotas de varias casas, para consenso y de-vig | 500 créditos/mes (crédito = mercados × regiones) |
 
-Presupuesto real diario que cabe en gratis:
+API-Football se descartó: su tier gratuito bloquea la temporada en curso
+("Free plans do not have access to this season") y sólo deja consultar
+2022-2024, verificado en vivo contra su API. football-data.org tiene la
+restricción inversa —da la temporada en curso completa en las 12
+competiciones de su tier gratuito, entre ellas La Liga y Premier League— así
+que sustituye a API-Football por completo: una sola llamada por liga trae a
+la vez los partidos ya jugados (para ajustar Dixon-Coles) y el calendario
+próximo, bajo el mismo espacio de ids.
 
-- **Fixtures + stats (API-Football):** 6 ligas × 1 req = 6/día. Lesiones y alineaciones de los partidos del día: ~15/día. Refresco semanal del histórico para el modelo: 6 ligas × 4 páginas = 24, una vez por semana. Total holgado bajo 100/día.
+Presupuesto real que cabe en gratis:
+
+- **Fixtures (football-data.org):** 1 req por liga y pasada → 2/pasada con 2 ligas. Muy por debajo de 10/min incluso con varias pasadas al día.
 - **Cuotas (The Odds API):** 2 mercados (`h2h`, `totals`) × 1 región (`eu`) = 2 créditos por llamada. 3 snapshots al día × 2 ligas = 12 créditos/día ≈ 360/mes. Cabe en 500 con margen para reintentos.
 
 Todo se cachea en Postgres; la app **nunca** llama a las APIs externas directamente — solo lee Supabase. Las claves viven en secrets de Edge Functions. Una tabla `api_usage_log` cuenta cada llamada y un guard corta antes de superar la cuota.
@@ -100,7 +109,7 @@ Todo se cachea en Postgres; la app **nunca** llama a las APIs externas directame
 
 1. **Props de jugador no están disponibles.** El mockup muestra "Isco 1+ tiro a puerta" e "Isak 1+ gol" de forma prominente, pero las props de jugador en fútbol requieren plan de pago en The Odds API y la cobertura por casa es irregular. **Fase 1 ship con mercados de partido** (1X2, Over/Under, BTTS, doble oportunidad, hándicap asiático), que sí están cubiertos al 100%. Las props quedan en Fase 4 detrás de un flag, activables el día que se pase a plan pago. Las pantallas se diseñan para que la lista de mercados sea dinámica, así que no hay que rehacer nada.
 2. **Tipos de cambio hardcodeados.** El mockup lleva `rate: 1/4000` para USD, etc. En producción el bankroll se **almacena en una sola moneda** (la que el usuario eligió en onboarding) y la conversión es solo de presentación, con un snapshot diario de tasas (`open.er-api.com`, gratis) cacheado en Postgres. Nunca se recalcula el histórico al cambiar de moneda.
-3. **El modelo necesita histórico.** Dixon-Coles requiere ~1–2 temporadas de resultados por liga. Es una carga inicial (24 req) más un refresco semanal, no un costo diario.
+3. **El modelo necesita histórico.** Dixon-Coles requiere una muestra mínima de partidos jugados por liga (40, en la práctica se alcanza en pocas semanas de temporada). football-data.org trae calendario e histórico reciente en la misma llamada, así que no hay carga inicial aparte: se acumula pasada a pasada.
 
 ---
 

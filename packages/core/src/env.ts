@@ -11,7 +11,7 @@ const serverEnvSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
 
-  API_FOOTBALL_KEY: z.string().min(10),
+  FOOTBALL_DATA_API_KEY: z.string().min(10),
   ODDS_API_KEY: z.string().min(10),
 
   GEMINI_API_KEY: z.string().min(10),
@@ -28,8 +28,8 @@ const serverEnvSchema = z.object({
     .default('true')
     .transform((v) => v === 'true'),
 
-  /** Topes diarios del tier gratuito, para el guard de cuota. */
-  API_FOOTBALL_DAILY_LIMIT: z.coerce.number().int().positive().default(100),
+  /** Topes del tier gratuito, para el guard de cuota. */
+  FOOTBALL_DATA_DAILY_LIMIT: z.coerce.number().int().positive().default(500),
   ODDS_API_MONTHLY_LIMIT: z.coerce.number().int().positive().default(500),
 });
 

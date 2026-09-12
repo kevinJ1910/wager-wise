@@ -1,25 +1,35 @@
 /**
- * Ingesta de partidos: ligas, equipos y calendario de las próximas 48 horas,
- * más los resultados recientes que alimentan el modelo.
+ * Ingesta de partidos: ligas, equipos, calendario de las próximas 48 horas y
+ * resultados recientes (para ajustar el modelo).
+ *
+ * Usa football-data.org en vez de API-Football: su tier gratuito da acceso
+ * completo a la temporada en curso (partidos jugados y por jugar) en las 12
+ * competiciones que cubre, entre ellas La Liga y Premier League — lo
+ * contrario de API-Football, cuyo plan free bloquea la temporada actual y
+ * sólo permite consultar 2022-2024. Al venir todo del mismo proveedor, el
+ * calendario próximo y el histórico de ajuste comparten el mismo espacio de
+ * ids de liga y equipo, sin necesidad de mapear nombres entre proveedores.
  *
  * Se invoca por `pg_cron`. Todo el gasto pasa por el guard de cuota.
  */
 
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
-  fetchFixtures,
-  mapFixtureStatus,
-  type ApiFootballFixture,
-} from '../_shared/providers.ts';
+  fetchMatches,
+  mapMatchStatus,
+  type FootballDataMatch,
+} from '../_shared/football-data.ts';
 import { QuotaExceededError, reserveQuota, trackRun } from '../_shared/quota.ts';
 
-/** Ligas de la Fase 1. Los ids son los de API-Football. */
+/** Ligas de la Fase 1. Los códigos son los de football-data.org. */
 const LEAGUES = [
-  { id: 140, name: 'La Liga', country: 'España', season: 2026 },
-  { id: 39, name: 'Premier League', country: 'Inglaterra', season: 2026 },
+  { code: 'PD', name: 'La Liga', country: 'España' },
+  { code: 'PL', name: 'Premier League', country: 'Inglaterra' },
 ];
 
 const DAYS_AHEAD = 2;
+/** Ventana histórica para alimentar el ajuste de Dixon-Coles. */
+const HISTORY_DAYS_BACK = 120;
 
 Deno.serve(async (req) => {
   const supabase = createClient(
@@ -27,26 +37,33 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  const apiKey = Deno.env.get('API_FOOTBALL_KEY');
+  const apiKey = Deno.env.get('FOOTBALL_DATA_API_KEY');
   if (!apiKey) {
-    return json({ error: 'Falta API_FOOTBALL_KEY en los secretos de la función.' }, 500);
+    return json({ error: 'Falta FOOTBALL_DATA_API_KEY en los secretos de la función.' }, 500);
   }
 
-  const dailyLimit = Number(Deno.env.get('API_FOOTBALL_DAILY_LIMIT') ?? '100');
+  const dailyLimit = Number(Deno.env.get('FOOTBALL_DATA_DAILY_LIMIT') ?? '500');
   const finishRun = await trackRun(supabase, 'ingest-fixtures');
 
   const summary = { leagues: 0, teams: 0, fixtures: 0, skipped: [] as string[] };
 
   try {
     const today = new Date();
-    const from = isoDate(today);
-    const to = isoDate(new Date(today.getTime() + DAYS_AHEAD * 86_400_000));
+    const upcomingFrom = isoDate(today);
+    const upcomingTo = isoDate(new Date(today.getTime() + DAYS_AHEAD * 86_400_000));
+    const historyFrom = isoDate(new Date(today.getTime() - HISTORY_DAYS_BACK * 86_400_000));
+    // football-data.org excluye el día de hoy de "histórico" implícitamente:
+    // basta con pedir hasta hoy y quedarnos con lo ya jugado.
+    const historyTo = upcomingFrom;
 
     for (const league of LEAGUES) {
+      // Una llamada cubre ambas ventanas de una vez: pedimos el rango
+      // completo (histórico + próximos) y clasificamos por estado nosotros
+      // mismos, así gastamos 1 petición de cuota por liga en vez de 2.
       let onCall: (endpoint: string, statusCode: number) => Promise<void>;
 
       try {
-        onCall = await reserveQuota(supabase, 'api-football', 1, dailyLimit);
+        onCall = await reserveQuota(supabase, 'football-data', 1, dailyLimit);
       } catch (error) {
         if (error instanceof QuotaExceededError) {
           // Paramos limpio: lo ingerido hasta aquí es válido y queda guardado.
@@ -56,7 +73,7 @@ Deno.serve(async (req) => {
         throw error;
       }
 
-      const fixtures = await fetchFixtures(league.id, league.season, from, to, {
+      const matches = await fetchMatches(league.code, historyFrom, upcomingTo, {
         apiKey,
         onCall,
       });
@@ -64,23 +81,23 @@ Deno.serve(async (req) => {
       await upsertLeague(supabase, league);
       summary.leagues += 1;
 
-      const teams = collectTeams(fixtures, league.id);
+      const teams = collectTeams(matches, league.code);
       if (teams.length > 0) {
         const { error } = await supabase.from('teams').upsert(teams, { onConflict: 'id' });
         if (error) throw new Error(`No se pudieron guardar equipos: ${error.message}`);
         summary.teams += teams.length;
       }
 
-      const rows = fixtures.map((item) => ({
-        id: `api-football:${item.fixture.id}`,
-        league_id: `api-football:${league.id}`,
-        home_team_id: `api-football:${item.teams.home.id}`,
-        away_team_id: `api-football:${item.teams.away.id}`,
-        kickoff_at: item.fixture.date,
-        status: mapFixtureStatus(item.fixture.status.short),
-        home_goals: item.goals.home,
-        away_goals: item.goals.away,
-        matchday: parseMatchday(item.league.round),
+      const rows = matches.map((item) => ({
+        id: `football-data:${item.id}`,
+        league_id: `football-data:${league.code}`,
+        home_team_id: `football-data:${item.homeTeam.id}`,
+        away_team_id: `football-data:${item.awayTeam.id}`,
+        kickoff_at: item.utcDate,
+        status: mapMatchStatus(item.status),
+        home_goals: item.score.fullTime.home,
+        away_goals: item.score.fullTime.away,
+        matchday: item.matchday ?? null,
         updated_at: new Date().toISOString(),
       }));
 
@@ -106,10 +123,10 @@ async function upsertLeague(
 ): Promise<void> {
   const { error } = await supabase.from('leagues').upsert(
     {
-      id: `api-football:${league.id}`,
+      id: `football-data:${league.code}`,
       name: league.name,
       country: league.country,
-      season: league.season,
+      season: new Date().getUTCFullYear(),
       is_active: true,
     },
     { onConflict: 'id' },
@@ -118,29 +135,22 @@ async function upsertLeague(
 }
 
 /** Equipos únicos de la respuesta; un mismo equipo aparece en varios partidos. */
-function collectTeams(fixtures: ApiFootballFixture[], leagueId: number) {
+function collectTeams(matches: FootballDataMatch[], leagueCode: string) {
   const byId = new Map<number, { id: string; name: string; league_id: string; logo_url: string | null }>();
 
-  for (const item of fixtures) {
-    for (const team of [item.teams.home, item.teams.away]) {
+  for (const item of matches) {
+    for (const team of [item.homeTeam, item.awayTeam]) {
       if (byId.has(team.id)) continue;
       byId.set(team.id, {
-        id: `api-football:${team.id}`,
+        id: `football-data:${team.id}`,
         name: team.name,
-        league_id: `api-football:${leagueId}`,
-        logo_url: team.logo ?? null,
+        league_id: `football-data:${leagueCode}`,
+        logo_url: team.crest ?? null,
       });
     }
   }
 
   return [...byId.values()];
-}
-
-/** "Regular Season - 6" → 6. Devuelve null si no hay número reconocible. */
-function parseMatchday(round: string | null | undefined): number | null {
-  if (!round) return null;
-  const match = /(\d+)\s*$/.exec(round);
-  return match ? Number(match[1]) : null;
 }
 
 function isoDate(date: Date): string {

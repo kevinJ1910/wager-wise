@@ -119,9 +119,17 @@ explicaciones.
 
 | Proveedor | Límite | Uso previsto |
 |---|---|---|
-| API-Football | 100 req/día | ~21/día (calendario, stats, lesiones) |
+| football-data.org | 10 req/min | ~2/pasada (una llamada por liga cubre calendario + histórico reciente) |
 | The Odds API | 500 créditos/mes | ~360/mes (2 mercados × 1 región × 3 pasadas × 2 ligas) |
 | Gemini Flash | ~1.000-1.500 req/día | ~40/día (un análisis por partido) |
+
+football-data.org sustituye a API-Football como única fuente de partidos: su
+tier gratuito da la temporada en curso completa (jugados y por jugar) en las
+12 competiciones que cubre —La Liga y Premier League entre ellas—, justo lo
+contrario de API-Football, cuyo plan free bloquea la temporada actual y sólo
+permite consultar 2022-2024. Al venir calendario e histórico del mismo
+proveedor, comparten el mismo espacio de ids sin mapear nombres de equipo
+entre fuentes.
 
 Cada llamada se registra en `api_usage_log` y un guard corta **antes** de
 superar la cuota, para no quedarse sin datos a mitad de periodo.

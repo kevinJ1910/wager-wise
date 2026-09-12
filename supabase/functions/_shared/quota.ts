@@ -1,15 +1,15 @@
 /**
  * Guard de cuota.
  *
- * El plan se apoya en los tiers gratuitos: 100 peticiones/día en API-Football y
- * 500 créditos/mes en The Odds API. Agotarlos a mitad de mes deja la app sin
- * datos, así que cada llamada se contabiliza y se comprueba el presupuesto
- * ANTES de gastarla.
+ * El plan se apoya en los tiers gratuitos: football-data.org no impone tope
+ * diario (sólo 10 req/min) y The Odds API da 500 créditos/mes. Agotar el de
+ * The Odds API a mitad de mes deja la app sin cuotas, así que cada llamada se
+ * contabiliza y se comprueba el presupuesto ANTES de gastarla.
  */
 
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 
-export type Provider = 'api-football' | 'the-odds-api' | 'gemini';
+export type Provider = 'football-data' | 'the-odds-api' | 'gemini';
 
 export class QuotaExceededError extends Error {
   constructor(

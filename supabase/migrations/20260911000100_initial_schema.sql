@@ -14,7 +14,7 @@ create extension if not exists "pgcrypto";
 -- ─────────────────────────────────────────────────────────────
 
 create table public.leagues (
-  id            text primary key,               -- 'api-football:140'
+  id            text primary key,               -- 'football-data:PD'
   name          text not null,
   country       text,
   season        integer not null,
@@ -24,7 +24,7 @@ create table public.leagues (
 );
 
 create table public.teams (
-  id            text primary key,               -- 'api-football:543'
+  id            text primary key,               -- 'football-data:558'
   name          text not null,
   short_name    text,
   league_id     text references public.leagues(id) on delete set null,
@@ -37,7 +37,7 @@ create index teams_league_idx on public.teams(league_id);
 create type public.fixture_status as enum ('scheduled', 'live', 'finished', 'postponed', 'cancelled');
 
 create table public.fixtures (
-  id             text primary key,              -- 'api-football:1035123'
+  id             text primary key,              -- 'football-data:564634'
   league_id      text not null references public.leagues(id) on delete cascade,
   home_team_id   text not null references public.teams(id),
   away_team_id   text not null references public.teams(id),
