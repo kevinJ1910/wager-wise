@@ -34,6 +34,10 @@ const config: ExpoConfig = {
     'expo-secure-store',
     'expo-web-browser',
     'expo-status-bar',
+    // Las notificaciones sólo llegan en un development build: Expo Go dejó de
+    // entregar push remoto en SDK 53. El plugin se declara igual para que el
+    // primer build de EAS ya salga configurado.
+    'expo-notifications',
     [
       'expo-splash-screen',
       {

@@ -151,6 +151,14 @@ export interface AuditInput {
   profile: RiskProfile;
   bankroll: number;
   stakeAmount: number;
+  /**
+   * Los dos interruptores que el usuario tiene en Perfil.
+   *
+   * Silencian el **aviso**, nunca el cálculo: `evaluateParlay` sigue usando la
+   * conjunta exacta aunque `correlationAudit` esté apagado. Un ajuste de la UI
+   * no puede cambiar cuánto vale un parlay, sólo cuánto se insiste en ello.
+   */
+  settings?: { correlationAudit?: boolean; stakeLimit?: boolean };
 }
 
 export interface AuditResult {
@@ -169,6 +177,8 @@ const pct = (n: number): string => `${(n * 100).toFixed(1)}%`;
  */
 export function auditParlay(input: AuditInput): AuditResult {
   const { legs, evaluation, profile, bankroll, stakeAmount } = input;
+  const correlationAudit = input.settings?.correlationAudit ?? true;
+  const stakeLimit = input.settings?.stakeLimit ?? true;
   const checks: AuditCheck[] = [];
 
   // 1. Correlación
@@ -177,7 +187,10 @@ export function auditParlay(input: AuditInput): AuditResult {
   // producto: ahí el parlay parece mejor de lo que es y el usuario apuesta de
   // más. Cuando es mejor, la correlación le favorece y marcarlo como aviso
   // sería alarmismo — basta con explicar que ya está corregido.
-  if (evaluation.correlatedGroups.length > 0) {
+  if (!correlationAudit) {
+    // Apagado en Perfil: ni aviso ni sello de aprobación. El EV que se muestra
+    // arriba sigue siendo el de la conjunta exacta.
+  } else if (evaluation.correlatedGroups.length > 0) {
     const group = evaluation.correlatedGroups[0]!;
     const harmful = group.trueProbability < group.naiveProbability;
     const where = group.matchLabel ? ` (${group.matchLabel})` : '';
@@ -271,7 +284,9 @@ export function auditParlay(input: AuditInput): AuditResult {
 
   // 4. Stake
   const maxStake = bankroll * profile.maxStakePct;
-  if (stakeAmount > maxStake) {
+  if (!stakeLimit) {
+    // Sin el límite auto-impuesto no hay nada que comprobar aquí.
+  } else if (stakeAmount > maxStake) {
     checks.push({
       id: 'stake',
       severity: 'warn',

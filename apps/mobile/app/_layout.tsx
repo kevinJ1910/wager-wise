@@ -16,6 +16,7 @@ import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useProfileSync } from '@/lib/profile';
 import { usePreferences } from '@/state/preferences';
 
 void SplashScreen.preventAutoHideAsync();
@@ -78,6 +79,9 @@ function AppShell(): React.ReactElement {
   const { theme } = useTheme();
 
   useProtectedRoute();
+  // El perfil del servidor manda al entrar: bankroll, moneda y ajustes viajan
+  // con la cuenta, no con el dispositivo.
+  useProfileSync();
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.bg }]}>

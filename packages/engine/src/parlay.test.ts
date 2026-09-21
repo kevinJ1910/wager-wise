@@ -294,3 +294,57 @@ describe('auditor', () => {
     expect(audit.fix).toBeUndefined();
   });
 });
+
+describe('interruptores del perfil', () => {
+  const profile = RISK_PROFILES.balanced;
+  const bankroll = 1_200_000;
+
+  const correlated = [
+    leg('home', 'betis-girona', { kind: 'match_result', outcome: 'home' }, 1.95, betisGirona),
+    leg('under', 'betis-girona', { kind: 'total_goals', line: 2.5, side: 'under' }, 2.1, betisGirona),
+  ];
+
+  it('apagar el auditor de correlación quita el aviso', () => {
+    const evaluation = evaluateParlay(correlated, matrices);
+    const audit = auditParlay({
+      legs: correlated,
+      evaluation,
+      profile,
+      bankroll,
+      stakeAmount: bankroll * 0.03,
+      settings: { correlationAudit: false },
+    });
+
+    expect(audit.checks.some((c) => c.id === 'correlation')).toBe(false);
+  });
+
+  it('pero no cambia el número: la conjunta sigue siendo la exacta', () => {
+    // Lo importante del interruptor: silencia el aviso, no el cálculo. Si
+    // apagarlo devolviera el producto ingenuo, el ajuste de la UI estaría
+    // cambiando cuánto vale el dinero del usuario.
+    const evaluation = evaluateParlay(correlated, matrices);
+    expect(evaluation.trueProbability).not.toBeCloseTo(evaluation.naiveProbability, 4);
+
+    const audit = auditParlay({
+      legs: correlated,
+      evaluation,
+      profile,
+      bankroll,
+      stakeAmount: bankroll * 0.03,
+      settings: { correlationAudit: false },
+    });
+
+    const ev = audit.checks.find((c) => c.id === 'expected_value')!;
+    expect(ev.body).toContain((evaluation.expectedValue * 100).toFixed(1));
+  });
+
+  it('apagar el límite de stake quita el aviso de stake', () => {
+    const evaluation = evaluateParlay(correlated, matrices);
+    const over = { legs: correlated, evaluation, profile, bankroll, stakeAmount: bankroll * 0.11 };
+
+    expect(auditParlay(over).checks.find((c) => c.id === 'stake')!.severity).toBe('warn');
+    expect(
+      auditParlay({ ...over, settings: { stakeLimit: false } }).checks.some((c) => c.id === 'stake'),
+    ).toBe(false);
+  });
+});

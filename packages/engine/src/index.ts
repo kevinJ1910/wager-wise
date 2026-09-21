@@ -53,6 +53,19 @@ export {
 } from './value.js';
 
 export {
+  closingLineValue,
+  parlayClv,
+  parlayPayout,
+  parlayStatus,
+  settleLeg,
+  summarizeBets,
+  type BetStats,
+  type BetStatus,
+  type SettledLeg,
+  type TrackedBet,
+} from './tracking.js';
+
+export {
   evaluateParlay,
   auditParlay,
   type ParlayLeg,

@@ -40,6 +40,37 @@ Monte Carlo de 400.000 marcadores.
 
 ---
 
+## Y después mide si acertó
+
+Un modelo que nadie audita es una opinión con decimales. Por eso cada apuesta
+registrada guarda la probabilidad y el EV que el motor calculó **en ese
+momento**, y al terminar el partido se liquida contra el marcador real.
+
+La métrica que manda no es el beneficio, es el **CLV**: cuánto mejor fue tu
+precio que el de cierre del mercado.
+
+```
+Villarreal-Levante · "Más de 2.5 goles"
+
+  cogiste          1.46
+  cierre           1.54     ← el mercado acabó pagando más
+  CLV             -5.2%     ← pagaste de más, aunque la apuesta ganara
+```
+
+Esa apuesta ganó y aun así el CLV es negativo, y eso es exactamente lo útil:
+con veinte resultados el beneficio es casi todo varianza, mientras que coger
+sistemáticamente mejor precio que el de cierre sí predice beneficio a largo
+plazo. La Edge Function `settle-bets` marca el último precio de cada casa antes
+del saque —hay que capturarlo entonces, porque después ya no existe en ninguna
+parte— y liquida con las mismas reglas del motor que usa la app.
+
+Las reglas tienen sus casos raros, y están en `tracking.test.ts`: una leg
+perdida tumba el parlay aunque queden partidos por jugar, una leg anulada sale
+de la combinada en vez de contar como ganada (y la cuota baja), y un 0-0 es un
+marcador, no un partido sin resolver.
+
+---
+
 ## El ajuste encoge hacia la media
 
 Dixon-Coles estima dos parámetros por equipo. En septiembre cada equipo lleva
@@ -76,7 +107,7 @@ packages/core/        Esquemas zod compartidos (el guardián de cada frontera)
 packages/ui/          Tokens del diseño, cristal, burbujas
 supabase/
   migrations/         Esquema, RLS y cron
-  functions/          Ingesta, modelo y capa Gemini
+  functions/          Ingesta, modelo, capa Gemini, liquidación y avisos
 design/               Referencia visual importada
 ```
 
@@ -90,7 +121,7 @@ app y en el backend.
 
 ```bash
 pnpm install
-pnpm test          # 119 tests
+pnpm test          # 154 tests
 pnpm typecheck
 ```
 
@@ -111,7 +142,8 @@ supabase link --project-ref TU_REF
 supabase db push
 cp .env.example .env                            # rellena los valores
 supabase secrets set --env-file .env
-supabase functions deploy ingest-fixtures ingest-odds fit-model generate-parlays
+supabase functions deploy ingest-fixtures ingest-odds fit-model generate-parlays \
+  settle-bets send-alerts
 ```
 
 Las Edge Functions se comprueban con Deno (el motor compilado lleva directivas
@@ -158,6 +190,9 @@ permite consultar 2022-2024. Al venir calendario e histórico del mismo
 proveedor, comparten el mismo espacio de ids sin mapear nombres de equipo
 entre fuentes.
 
+`fit-model`, `settle-bets` y `send-alerts` no aparecen en la tabla porque no
+gastan nada: los dos primeros sólo leen la base, y el push de Expo es gratuito.
+
 Cada llamada se registra en `api_usage_log` y un guard corta **antes** de
 superar la cuota, para no quedarse sin datos a mitad de periodo. La ingesta de
 cuotas además se salta las ligas sin partidos próximos: durante un parón de
@@ -178,10 +213,22 @@ el razonamiento de la IA en el detalle de partido. Sin partidos en la ventana
 —los parones de selecciones duran hasta tres semanas— cae a datos de muestra y
 lo dice en pantalla.
 
-Pendiente, por fase: tracker de bankroll con ROI y CLV (3), backtesting y props
-de jugador (4). Las props necesitan plan de pago en The Odds API; las pantallas
-ya soportan una lista de mercados dinámica, así que activarlas no exige rehacer
-nada.
+Fase 3 completa: registrar un parlay lo guarda en tu cuenta (en una sola
+transacción: parlay, legs y movimiento de bankroll), `settle-bets` lo liquida
+contra el marcador real y captura la línea de cierre, y la pantalla Apuestas
+muestra P/L, acierto, ROI y CLV. El perfil viaja con la cuenta, no con el
+dispositivo, y sus interruptores afectan de verdad al auditor.
+
+Pendiente, por fase: backtesting con calibración de `w`, props de jugador y
+builds de EAS (4). Las props necesitan plan de pago en The Odds API; las
+pantallas ya soportan una lista de mercados dinámica, así que activarlas no
+exige rehacer nada.
+
+**Las notificaciones push no se pueden probar todavía.** Expo Go dejó de
+entregar push remoto en SDK 53, así que `registerPushToken` devuelve
+`unsupported` hasta que haya un development build de EAS (Fase 4). El registro
+del token, la tabla y la función `send-alerts` están hechos y el interruptor de
+Perfil se apaga solo explicando por qué.
 
 ---
 

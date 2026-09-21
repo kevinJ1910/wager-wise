@@ -10,16 +10,19 @@ import Slider from '@react-native-community/slider';
 import { formatMoney, formatOdds, formatPercent, formatSignedPercent, isCurrencyCode } from '@wagerwise/core';
 import { RISK_PROFILES, auditParlay, evaluateParlay, type AuditCheck } from '@wagerwise/engine';
 import { Button, GlassCard, Overline, Pill, Txt, useTheme } from '@wagerwise/ui';
+import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { usePlaceParlay } from '@/lib/bets';
 import { useFixtureData } from '@/lib/queries';
 import { markPlaced, useBuilder } from '@/state/builder';
 import { usePreferences } from '@/state/preferences';
 
 export default function BuilderRoute(): React.ReactElement {
   const { theme } = useTheme();
+  const router = useRouter();
 
   const legs = useBuilder((s) => s.legs);
   const stakePct = useBuilder((s) => s.stakePct);
@@ -27,14 +30,17 @@ export default function BuilderRoute(): React.ReactElement {
   const setStakePct = useBuilder((s) => s.setStakePct);
   const removeLeg = useBuilder((s) => s.removeLeg);
   const removeLegs = useBuilder((s) => s.removeLegs);
+  const clearBuilder = useBuilder((s) => s.clear);
 
   const bankroll = usePreferences((s) => s.bankroll);
   const currencyRaw = usePreferences((s) => s.currency);
   const currency = isCurrencyCode(currencyRaw) ? currencyRaw : 'COP';
   const riskProfileId = usePreferences((s) => s.riskProfile);
+  const settings = usePreferences((s) => s.settings);
   const profile = RISK_PROFILES[riskProfileId];
 
   const stake = (bankroll * stakePct) / 100;
+  const place = usePlaceParlay();
 
   // Las matrices vienen de la misma fuente que las pantallas de selección: sin
   // la del partido, la conjunta exacta no se puede calcular y el auditor
@@ -42,12 +48,34 @@ export default function BuilderRoute(): React.ReactElement {
   const { matrices } = useFixtureData();
   const evaluation = useMemo(() => evaluateParlay(legs, matrices), [legs, matrices]);
   const audit = useMemo(
-    () => auditParlay({ legs, evaluation, profile, bankroll, stakeAmount: stake }),
-    [legs, evaluation, profile, bankroll, stake],
+    () => auditParlay({ legs, evaluation, profile, bankroll, stakeAmount: stake, settings }),
+    [legs, evaluation, profile, bankroll, stake, settings],
   );
 
   const correlatedLegIds = new Set(evaluation.correlatedGroups.flatMap((g) => g.legIds));
   const hasLegs = legs.length > 0;
+
+  /**
+   * Registrar no cursa nada: deja constancia de lo que el usuario apostó en su
+   * casa de apuestas, para poder medirlo después. El parlay se guarda con la
+   * probabilidad y el EV que el auditor calculó en este momento, no con los de
+   * cuando se liquide: eso es lo que permite comprobar si el modelo acertaba.
+   */
+  function register(): void {
+    if (place.isPending || placed) return;
+
+    place.mutate(
+      {
+        legs,
+        stake,
+        currency,
+        combinedOdds: evaluation.combinedOdds,
+        trueProbability: evaluation.trueProbability,
+        expectedValue: evaluation.expectedValue,
+      },
+      { onSuccess: () => markPlaced() },
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -196,15 +224,35 @@ export default function BuilderRoute(): React.ReactElement {
             label={
               placed
                 ? 'Apuesta registrada ✓'
-                : legs.length < 2
-                  ? 'Añade otra leg'
-                  : `Registrar ${formatMoney(stake, currency)}`
+                : place.isPending
+                  ? 'Registrando…'
+                  : legs.length < 2
+                    ? 'Añade otra leg'
+                    : `Registrar ${formatMoney(stake, currency)}`
             }
-            onPress={markPlaced}
-            disabled={legs.length < 2 || placed}
+            onPress={register}
+            disabled={legs.length < 2 || placed || place.isPending}
             style={styles.placeButton}
           />
+
+          {place.error ? (
+            <Txt variant="caption" tone="bad" style={styles.placeNote}>
+              {(place.error as Error).message}
+            </Txt>
+          ) : placed ? (
+            <Txt variant="caption" tone="ink3" style={styles.placeNote}>
+              Guardada en tu historial. WagerWise no cursa la apuesta: tienes que hacerla en tu
+              casa de apuestas.
+            </Txt>
+          ) : null}
         </GlassCard>
+
+        {placed ? (
+          <View style={styles.afterPlace}>
+            <Button label="Ver en Apuestas" variant="glass" onPress={() => router.push('/(tabs)/bets')} />
+            <Button label="Empezar otro parlay" variant="glass" onPress={clearBuilder} />
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -320,4 +368,6 @@ const styles = StyleSheet.create({
   stakeHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   stakeFooter: { flexDirection: 'row', justifyContent: 'space-between' },
   placeButton: { marginTop: 14 },
+  placeNote: { marginTop: 9 },
+  afterPlace: { gap: 10 },
 });

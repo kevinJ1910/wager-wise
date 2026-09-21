@@ -11,6 +11,25 @@ import type { RiskProfileId, ThemePreference } from '@wagerwise/core';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+/**
+ * Los tres interruptores de Perfil.
+ *
+ * `correlationAudit` y `stakeLimit` sólo silencian avisos: el motor sigue
+ * calculando la conjunta exacta y el EV corregido aunque estén apagados. Un
+ * ajuste de la interfaz no puede cambiar cuánto vale un parlay.
+ */
+export interface UserSettings {
+  alerts: boolean;
+  correlationAudit: boolean;
+  stakeLimit: boolean;
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  alerts: true,
+  correlationAudit: true,
+  stakeLimit: true,
+};
+
 interface PreferencesState {
   theme: ThemePreference;
   /** Se rellena en el onboarding y se sincroniza al perfil al terminar. */
@@ -23,6 +42,7 @@ interface PreferencesState {
    * en Perfil; es un límite auto-impuesto de juego responsable.
    */
   weeklyLimitPct: number;
+  settings: UserSettings;
   /** True cuando el usuario terminó o saltó el onboarding en este dispositivo. */
   onboarded: boolean;
   /** True mientras se rehidrata desde AsyncStorage. */
@@ -34,6 +54,7 @@ interface PreferencesState {
   setRiskProfile: (profile: RiskProfileId) => void;
   setWeeklyLimitPct: (pct: number) => void;
   toggleLeague: (league: string) => void;
+  setSetting: (key: keyof UserSettings, value: boolean) => void;
   setOnboarded: (value: boolean) => void;
 }
 
@@ -46,6 +67,7 @@ export const usePreferences = create<PreferencesState>()(
       riskProfile: 'balanced',
       followedLeagues: ['La Liga', 'Premier'],
       weeklyLimitPct: 0.15,
+      settings: DEFAULT_SETTINGS,
       onboarded: false,
       hydrated: false,
 
@@ -64,6 +86,9 @@ export const usePreferences = create<PreferencesState>()(
             ? state.followedLeagues.filter((l) => l !== league)
             : [...state.followedLeagues, league],
         })),
+
+      setSetting: (key, value) =>
+        set((state) => ({ settings: { ...state.settings, [key]: value } })),
 
       setOnboarded: (onboarded) => set({ onboarded }),
     }),
