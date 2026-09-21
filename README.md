@@ -40,6 +40,33 @@ Monte Carlo de 400.000 marcadores.
 
 ---
 
+## El ajuste encoge hacia la media
+
+Dixon-Coles estima dos parámetros por equipo. En septiembre cada equipo lleva
+ocho o nueve partidos, así que hay cuarenta parámetros libres para unas ochenta
+observaciones y el ajuste se sobreajusta sin remedio: una goleada temprana
+bastaba para que el modelo diera a un equipo **2,9 veces** el ataque medio de la
+liga, y de ahí salían probabilidades imposibles (96% de victoria local, 59% de
+empate).
+
+Dos cosas lo corrigen, y las dos hacen falta:
+
+1. **Muestra**: se ingiere también la temporada anterior completa. De 84
+   partidos por liga a 449.
+2. **Encogimiento**: cada fuerza se acerca a 1 en proporción a los partidos
+   efectivos que la respaldan —`n / (n + 12)`, con `n` medido en peso por
+   recencia, no en conteo—. Es James-Stein: con poca muestra la media de la liga
+   predice mejor que el dato propio del equipo.
+
+```
+                       antes        después
+Barcelona (ataque)      2,89          1,64
+Barcelona - Getafe    96-4-1       72-18-10
+Hull City - Everton  26-59-15      42-29-29
+```
+
+---
+
 ## Estructura
 
 ```
@@ -119,7 +146,7 @@ explicaciones.
 
 | Proveedor | Límite | Uso previsto |
 |---|---|---|
-| football-data.org | 10 req/min | ~2/pasada (una llamada por liga cubre calendario + histórico reciente) |
+| football-data.org | 10 req/min | 12/día (por liga y pasada: calendario, y temporada anterior para el ajuste) |
 | The Odds API | 500 créditos/mes | ~360/mes (2 mercados × 1 región × 3 pasadas × 2 ligas) |
 | Gemini Flash | ~1.000-1.500 req/día | ~40/día (un análisis por partido) |
 
@@ -132,7 +159,10 @@ proveedor, comparten el mismo espacio de ids sin mapear nombres de equipo
 entre fuentes.
 
 Cada llamada se registra en `api_usage_log` y un guard corta **antes** de
-superar la cuota, para no quedarse sin datos a mitad de periodo.
+superar la cuota, para no quedarse sin datos a mitad de periodo. La ingesta de
+cuotas además se salta las ligas sin partidos próximos: durante un parón de
+selecciones serían tres semanas gastando créditos en eventos que no tendrían
+ningún partido al que engancharse.
 
 ---
 
@@ -142,10 +172,16 @@ Fase 1 completa: monorepo, motor con tests, esquema con RLS, autenticación
 (Google y correo), sistema visual con claro/oscuro, y las pantallas Splash,
 Auth, Onboarding, Hoy, Partido, Builder y Perfil.
 
-Pendiente, por fase: alertas de valor y análisis IA en pantalla (2), tracker de
-bankroll con ROI y CLV (3), backtesting y props de jugador (4). Las props
-necesitan plan de pago en The Odds API; las pantallas ya soportan una lista de
-mercados dinámica, así que activarlas no exige rehacer nada.
+Fase 2 completa: la app lee del backend real —partidos, cuotas, predicciones y
+análisis de Gemini—, con la pantalla Valor sobre las selecciones con ventaja y
+el razonamiento de la IA en el detalle de partido. Sin partidos en la ventana
+—los parones de selecciones duran hasta tres semanas— cae a datos de muestra y
+lo dice en pantalla.
+
+Pendiente, por fase: tracker de bankroll con ROI y CLV (3), backtesting y props
+de jugador (4). Las props necesitan plan de pago en The Odds API; las pantallas
+ya soportan una lista de mercados dinámica, así que activarlas no exige rehacer
+nada.
 
 ---
 

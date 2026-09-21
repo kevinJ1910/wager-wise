@@ -93,3 +93,54 @@ export async function fetchMatches(
 
   return parsed.data.matches;
 }
+
+/**
+ * Temporada completa de una competición.
+ *
+ * Los rangos de fecha y el filtro de temporada no se combinan en esta API, así
+ * que va como llamada aparte. Se usa para el histórico del modelo: con sólo la
+ * temporada en curso, en septiembre cada equipo lleva ocho o nueve partidos y
+ * un ajuste con cuarenta parámetros libres sobre esa muestra se sobreajusta sin
+ * remedio.
+ */
+export async function fetchSeason(
+  competitionCode: string,
+  season: number,
+  options: FootballDataOptions,
+): Promise<FootballDataMatch[]> {
+  const path = `/competitions/${competitionCode}/matches`;
+  const url = new URL(`${BASE}${path}`);
+  url.searchParams.set('season', String(season));
+
+  const response = await fetch(url, { headers: { 'X-Auth-Token': options.apiKey } });
+  await options.onCall(`${path}?season`, response.status);
+
+  if (!response.ok) {
+    throw new Error(
+      `football-data.org ${path} (temporada ${season}) respondió ${response.status}: ${await response.text()}`,
+    );
+  }
+
+  const parsed = matchesResponseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error(
+      `Respuesta inesperada de football-data.org ${path}: ${parsed.error.issues
+        .map((i) => `${i.path.join('.')} ${i.message}`)
+        .join('; ')
+        .slice(0, 400)}`,
+    );
+  }
+
+  return parsed.data.matches;
+}
+
+/**
+ * Temporada a la que pertenece una fecha.
+ *
+ * Las ligas europeas cruzan el año natural: agosto de 2026 y mayo de 2027 son
+ * la misma temporada, la "2026" para esta API.
+ */
+export function seasonOf(date: Date): number {
+  const year = date.getUTCFullYear();
+  return date.getUTCMonth() >= 6 ? year : year - 1;
+}

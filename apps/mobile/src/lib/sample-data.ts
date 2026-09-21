@@ -21,35 +21,11 @@ import {
   selectionProbability,
   type Selection,
 } from '@wagerwise/engine';
+import type { FixtureView, MarketOffer } from './fixtures.js';
 
-export interface SampleMarket {
-  id: string;
-  selection: Selection;
-  label: string;
-  odds: number;
-  modelProbability: number;
-  marketProbability: number;
-  blendedProbability: number;
-  edge: number;
-  expectedValue: number;
-}
-
-export interface SampleFixture {
-  id: string;
-  league: string;
-  kickoff: string;
-  homeTeam: string;
-  awayTeam: string;
-  /** Tasas esperadas de gol; de aquí sale toda la probabilidad. */
-  lambda: number;
-  mu: number;
-  matrix: number[][];
-  matchOdds: [number, number, number];
-  markets: SampleMarket[];
-  /** Mejor EV entre sus mercados, para ordenar la lista de Hoy. */
-  bestEv: number;
-  modelSplit: { home: number; draw: number; away: number };
-}
+/** Los datos de muestra cumplen el mismo contrato que los reales. */
+export type SampleMarket = MarketOffer;
+export type SampleFixture = FixtureView;
 
 const RHO = -0.03;
 const MAX_GOALS = 12;
@@ -210,29 +186,3 @@ export const SAMPLE_MATRICES: ReadonlyMap<string, number[][]> = new Map(
 );
 
 export const SAMPLE_LEAGUES = [...new Set(SAMPLE_FIXTURES.map((f) => f.league))];
-
-/**
- * El "parlay del día": las tres mejores selecciones de partidos distintos.
- *
- * Filtrar por partido distinto no es cosmético — es lo que mantiene válida la
- * multiplicación de cuotas. Dos legs del mismo partido exigirían la conjunta
- * de la matriz, y el auditor lo marcaría.
- */
-export function sampleDailyParlay(): { fixture: SampleFixture; market: SampleMarket }[] {
-  const seen = new Set<string>();
-  const picks: { fixture: SampleFixture; market: SampleMarket }[] = [];
-
-  const candidates = SAMPLE_FIXTURES.flatMap((fixture) =>
-    fixture.markets.map((market) => ({ fixture, market })),
-  ).sort((a, b) => b.market.expectedValue - a.market.expectedValue);
-
-  for (const candidate of candidates) {
-    if (picks.length >= 3) break;
-    if (seen.has(candidate.fixture.id)) continue;
-    if (candidate.market.expectedValue <= 0) continue;
-    seen.add(candidate.fixture.id);
-    picks.push(candidate);
-  }
-
-  return picks;
-}

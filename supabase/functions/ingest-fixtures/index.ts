@@ -1,6 +1,6 @@
 /**
- * Ingesta de partidos: ligas, equipos, calendario de las próximas 48 horas y
- * resultados recientes (para ajustar el modelo).
+ * Ingesta de partidos: ligas, equipos, calendario próximo y el histórico que
+ * alimenta el ajuste del modelo.
  *
  * Usa football-data.org en vez de API-Football: su tier gratuito da acceso
  * completo a la temporada en curso (partidos jugados y por jugar) en las 12
@@ -16,7 +16,9 @@
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import {
   fetchMatches,
+  fetchSeason,
   mapMatchStatus,
+  seasonOf,
   type FootballDataMatch,
 } from '../_shared/football-data.ts';
 import { QuotaExceededError, reserveQuota, trackRun } from '../_shared/quota.ts';
@@ -27,7 +29,19 @@ const LEAGUES = [
   { code: 'PL', name: 'Premier League', country: 'Inglaterra' },
 ];
 
-const DAYS_AHEAD = 2;
+/**
+ * Ventana de calendario futuro.
+ *
+ * Tiene que cubrir dos horizontes distintos. El de The Odds API, que ofrece
+ * cuotas con ~una semana de antelación: si el calendario sólo llegase a 48
+ * horas, esas cuotas no tendrían partido al que engancharse y los créditos
+ * gastados en pedirlas se perderían. Y el de los parones de selecciones, que
+ * dejan hasta tres semanas sin fútbol de clubes: con una ventana corta la app
+ * se queda sin nada real que enseñar justo durante ese hueco.
+ *
+ * Ampliarla no cuesta nada: es la misma llamada con otro `dateTo`.
+ */
+const DAYS_AHEAD = 21;
 /** Ventana histórica para alimentar el ajuste de Dixon-Coles. */
 const HISTORY_DAYS_BACK = 120;
 
@@ -52,18 +66,15 @@ Deno.serve(async (req) => {
     const upcomingFrom = isoDate(today);
     const upcomingTo = isoDate(new Date(today.getTime() + DAYS_AHEAD * 86_400_000));
     const historyFrom = isoDate(new Date(today.getTime() - HISTORY_DAYS_BACK * 86_400_000));
-    // football-data.org excluye el día de hoy de "histórico" implícitamente:
-    // basta con pedir hasta hoy y quedarnos con lo ya jugado.
-    const historyTo = upcomingFrom;
 
     for (const league of LEAGUES) {
-      // Una llamada cubre ambas ventanas de una vez: pedimos el rango
-      // completo (histórico + próximos) y clasificamos por estado nosotros
-      // mismos, así gastamos 1 petición de cuota por liga en vez de 2.
+      // Una sola petición cubre histórico reciente y calendario próximo:
+      // pedimos el rango entero y clasificamos por estado nosotros mismos.
       let onCall: (endpoint: string, statusCode: number) => Promise<void>;
 
       try {
-        onCall = await reserveQuota(supabase, 'football-data', 1, dailyLimit);
+        // Dos llamadas: la ventana en curso y la temporada anterior completa.
+        onCall = await reserveQuota(supabase, 'football-data', 2, dailyLimit);
       } catch (error) {
         if (error instanceof QuotaExceededError) {
           // Paramos limpio: lo ingerido hasta aquí es válido y queda guardado.
@@ -73,10 +84,15 @@ Deno.serve(async (req) => {
         throw error;
       }
 
-      const matches = await fetchMatches(league.code, historyFrom, upcomingTo, {
-        apiKey,
-        onCall,
-      });
+      // La temporada anterior entera es lo que da muestra suficiente al ajuste:
+      // treinta y ocho partidos por equipo en vez de los ocho o nueve que se
+      // llevan jugados en septiembre.
+      const [current, previous] = await Promise.all([
+        fetchMatches(league.code, historyFrom, upcomingTo, { apiKey, onCall }),
+        fetchSeason(league.code, seasonOf(today) - 1, { apiKey, onCall }),
+      ]);
+
+      const matches = dedupe([...previous, ...current]);
 
       await upsertLeague(supabase, league);
       summary.leagues += 1;
@@ -132,6 +148,18 @@ async function upsertLeague(
     { onConflict: 'id' },
   );
   if (error) throw new Error(`No se pudo guardar la liga ${league.name}: ${error.message}`);
+}
+
+/**
+ * Un partido por id.
+ *
+ * Las dos ventanas se solapan en los bordes de temporada; el último en llegar
+ * gana porque viene de la consulta más reciente.
+ */
+function dedupe(matches: FootballDataMatch[]): FootballDataMatch[] {
+  const byId = new Map<number, FootballDataMatch>();
+  for (const match of matches) byId.set(match.id, match);
+  return [...byId.values()];
 }
 
 /** Equipos únicos de la respuesta; un mismo equipo aparece en varios partidos. */

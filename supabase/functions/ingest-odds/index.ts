@@ -24,6 +24,9 @@ const COMPETITIONS = [
 const MARKETS = ['h2h', 'totals'];
 const REGIONS = 'eu';
 
+/** Hasta dónde ofrece cuotas The Odds API; más allá no hay nada que pedir. */
+const ODDS_HORIZON_DAYS = 8;
+
 Deno.serve(async () => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -42,6 +45,15 @@ Deno.serve(async () => {
     const cost = oddsCallCost(MARKETS, REGIONS);
 
     for (const competition of COMPETITIONS) {
+      // Sin partidos por jugar no hay nada a lo que enganchar las cuotas, y
+      // cada llamada cuesta créditos igual. En un parón de selecciones son tres
+      // semanas pidiendo cuotas que acabarían todas sin emparejar.
+      const pending = await countUpcomingFixtures(supabase, competition.leagueId);
+      if (pending === 0) {
+        summary.skipped.push(`${competition.sportKey}: sin partidos próximos en la base.`);
+        continue;
+      }
+
       let onCall: (endpoint: string, statusCode: number) => Promise<void>;
 
       try {
@@ -86,6 +98,30 @@ Deno.serve(async () => {
     return json({ error: message, summary }, 500);
   }
 });
+
+/** Partidos por jugar de una liga dentro del horizonte de cuotas. */
+async function countUpcomingFixtures(
+  supabase: SupabaseClient,
+  leagueId: string,
+): Promise<number> {
+  const horizon = new Date(Date.now() + ODDS_HORIZON_DAYS * 86_400_000).toISOString();
+
+  const { count, error } = await supabase
+    .from('fixtures')
+    .select('id', { count: 'exact', head: true })
+    .eq('league_id', leagueId)
+    .eq('status', 'scheduled')
+    .lte('kickoff_at', horizon);
+
+  // Ante un fallo de lectura seguimos adelante: perder una pasada de cuotas es
+  // peor que gastar dos créditos de más.
+  if (error) {
+    console.error(`No se pudo contar partidos de ${leagueId}: ${error.message}`);
+    return 1;
+  }
+
+  return count ?? 0;
+}
 
 /**
  * Empareja un evento de The Odds API con un partido ya ingerido.

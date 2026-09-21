@@ -10,14 +10,8 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SampleDataBanner } from '@/components/SampleDataBanner';
-import {
-  SAMPLE_FIXTURES,
-  SAMPLE_LEAGUES,
-  SAMPLE_MATRICES,
-  sampleDailyParlay,
-  type SampleFixture,
-  type SampleMarket,
-} from '@/lib/sample-data';
+import { bestParlay, type FixtureView, type MarketOffer } from '@/lib/fixtures';
+import { useFixtureData } from '@/lib/queries';
 import { useBuilder } from '@/state/builder';
 import { usePreferences } from '@/state/preferences';
 
@@ -33,18 +27,24 @@ export default function TodayRoute(): React.ReactElement {
   const currency = isCurrencyCode(currencyRaw) ? currencyRaw : 'COP';
   const loadParlay = useBuilder((s) => s.loadParlay);
 
+  const data = useFixtureData();
+
+  // El encabezado no puede decir "hoy" si el próximo partido es dentro de tres
+  // semanas: durante un parón sería sencillamente falso.
+  const heading = useMemo(() => headingFor(visibleNext(data.fixtures)), [data.fixtures]);
+
   const visible = useMemo(
-    () => SAMPLE_FIXTURES.filter((f) => league === ALL || f.league === league),
-    [league],
+    () => data.fixtures.filter((f) => league === ALL || f.league === league),
+    [data.fixtures, league],
   );
 
   // El parlay del día se evalúa con el motor, no con números precalculados: la
   // cuota y el EV que se ven son los que produce la misma lógica del builder.
   const daily = useMemo(() => {
-    const picks = sampleDailyParlay();
+    const picks = bestParlay(data.fixtures);
     const legs = picks.map(toLeg);
-    return { picks, legs, evaluation: evaluateParlay(legs, SAMPLE_MATRICES) };
-  }, []);
+    return { picks, legs, evaluation: evaluateParlay(legs, data.matrices) };
+  }, [data.fixtures, data.matrices]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -53,13 +53,15 @@ export default function TodayRoute(): React.ReactElement {
         showsVerticalScrollIndicator={false}
         stickyHeaderIndices={[]}
       >
-        <SampleDataBanner />
+        <SampleDataBanner source={data.source} emptySchedule={data.emptySchedule} />
 
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Overline>Hoy · {league === ALL ? 'todas las ligas' : league}</Overline>
+            <Overline>
+              {heading.overline} · {league === ALL ? 'todas las ligas' : league}
+            </Overline>
             <Txt variant="display" style={styles.headerTitle}>
-              Partidos de hoy
+              {heading.title}
             </Txt>
           </View>
           <View style={styles.headerRight}>
@@ -73,7 +75,7 @@ export default function TodayRoute(): React.ReactElement {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chipRow}>
             <Chip label={ALL} active={league === ALL} onPress={() => setLeague(ALL)} />
-            {SAMPLE_LEAGUES.map((name) => (
+            {data.leagues.map((name) => (
               <Chip
                 key={name}
                 label={name}
@@ -85,6 +87,7 @@ export default function TodayRoute(): React.ReactElement {
         </ScrollView>
 
         {/* ── Parlay del día ── */}
+        {daily.picks.length > 0 ? (
         <GlassCard variant="hero" style={styles.heroCard}>
           <View style={styles.heroHeader}>
             <View style={styles.heroBadgeRow}>
@@ -146,6 +149,15 @@ export default function TodayRoute(): React.ReactElement {
             </Pressable>
           </View>
         </GlassCard>
+        ) : (
+          <GlassCard variant="card" style={styles.emptyCard}>
+            <Txt variant="bodySmall">Hoy no hay ningún parlay con valor</Txt>
+            <Txt variant="caption" tone="ink2">
+              Ninguna combinación supera el margen de las casas. Recomendar una igualmente sería
+              regalar dinero: mejor esperar a la próxima jornada.
+            </Txt>
+          </GlassCard>
+        )}
 
         <Overline>
           {visible.length} {visible.length === 1 ? 'partido' : 'partidos'} · ordenados por EV
@@ -161,7 +173,7 @@ export default function TodayRoute(): React.ReactElement {
   );
 }
 
-function FixtureCard({ fixture }: { fixture: SampleFixture }): React.ReactElement {
+function FixtureCard({ fixture }: { fixture: FixtureView }): React.ReactElement {
   const { theme } = useTheme();
   const router = useRouter();
   const evPercent = fixture.bestEv * 100;
@@ -179,7 +191,15 @@ function FixtureCard({ fixture }: { fixture: SampleFixture }): React.ReactElemen
           <Txt variant="caption" tone="ink3" uppercase>
             {fixture.league} · {fixture.kickoff}
           </Txt>
-          <Pill label={`EV ${formatSignedPercent(fixture.bestEv)}`} tone={evTone(evPercent)} />
+          {/* Sin mercados no hay EV que enseñar. Un "+0,0%" daría a entender
+              que se calculó y salió nulo, cuando lo que falta es la cuota. */}
+          {fixture.markets.length > 0 ? (
+            <Pill label={`EV ${formatSignedPercent(fixture.bestEv)}`} tone={evTone(evPercent)} />
+          ) : (
+            <Txt variant="caption" tone="ink3">
+              sin cuotas aún
+            </Txt>
+          )}
         </View>
 
         <View style={styles.fixtureBody}>
@@ -199,7 +219,7 @@ function FixtureCard({ fixture }: { fixture: SampleFixture }): React.ReactElemen
                   {key}
                 </Txt>
                 <Txt variant="bodySmall" style={styles.quickOddsValue}>
-                  {formatOdds(fixture.matchOdds[index]!)}
+                  {fixture.matchOdds ? formatOdds(fixture.matchOdds[index]!) : '—'}
                 </Txt>
               </GlassCard>
             ))}
@@ -225,12 +245,33 @@ function FixtureCard({ fixture }: { fixture: SampleFixture }): React.ReactElemen
 
 const pct = (n: number): string => String(Math.round(n * 100));
 
+function visibleNext(fixtures: FixtureView[]): Date | null {
+  const times = fixtures
+    .map((f) => f.kickoffAt)
+    .filter((d): d is Date => d instanceof Date)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  return times[0] ?? null;
+}
+
+/** "Hoy" sólo cuando de verdad hay algo hoy; si no, la fecha que toque. */
+function headingFor(next: Date | null): { overline: string; title: string } {
+  if (!next) return { overline: 'Hoy', title: 'Partidos de hoy' };
+
+  const now = new Date();
+  const sameDay = next.toDateString() === now.toDateString();
+  if (sameDay) return { overline: 'Hoy', title: 'Partidos de hoy' };
+
+  const label = next.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  return { overline: `Próxima jornada · ${label}`, title: 'Próximos partidos' };
+}
+
 function toLeg({
   fixture,
   market,
 }: {
-  fixture: SampleFixture;
-  market: SampleMarket;
+  fixture: FixtureView;
+  market: MarketOffer;
 }): ParlayLeg {
   return {
     id: market.id,
@@ -254,6 +295,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 2 },
 
   heroCard: { padding: 20, gap: 16 },
+  emptyCard: { padding: 18, gap: 6 },
   heroHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   heroBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   aiDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },

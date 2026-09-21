@@ -52,6 +52,17 @@ export interface FitOptions {
   /** Iteraciones del ajuste iterativo. */
   iterations?: number;
   rho?: number;
+  /**
+   * Fuerza del encogimiento hacia la media de la liga, medida en partidos.
+   *
+   * Un equipo con esta cantidad de partidos efectivos conserva la mitad de su
+   * desviación respecto a 1; con menos, se le acerca más. Existe porque el
+   * ajuste tiene dos parámetros libres por equipo y en septiembre hay ocho o
+   * nueve partidos jugados: sin encoger, una goleada temprana convierte a un
+   * equipo en tres veces la media de la liga y la probabilidad resultante deja
+   * de ser creíble. Poner 0 desactiva el encogimiento.
+   */
+  priorMatches?: number;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -102,7 +113,13 @@ export function fitDixonColes(
   matches: readonly HistoricalMatch[],
   options: FitOptions = {},
 ): DixonColesModel {
-  const { halfLifeDays = 107, asOf = new Date(), iterations = 60, rho = -0.03 } = options;
+  const {
+    halfLifeDays = 107,
+    asOf = new Date(),
+    iterations = 60,
+    rho = -0.03,
+    priorMatches = 12,
+  } = options;
 
   if (matches.length === 0) {
     throw new RangeError('No hay partidos históricos para ajustar el modelo.');
@@ -195,12 +212,63 @@ export function fitDixonColes(
     normalizeToMeanOne(defence);
   }
 
+  // El encogimiento va al final, sobre el ajuste ya convergido: durante las
+  // iteraciones sesgaría el reparto de goles esperados entre equipos.
+  if (priorMatches > 0) {
+    const exposure = effectiveMatches(matches, weightOf, teamIds);
+    shrinkToMeanOne(attack, exposure, priorMatches);
+    shrinkToMeanOne(defence, exposure, priorMatches);
+  }
+
   const ratings = new Map<string, TeamRating>();
   for (const id of teamIds) {
     ratings.set(id, { teamId: id, attack: attack.get(id)!, defence: defence.get(id)! });
   }
 
   return { ratings, homeAdvantage, rho, baseRate, sampleSize: matches.length };
+}
+
+/**
+ * Partidos efectivos de cada equipo: la suma de los pesos por recencia, no el
+ * conteo. Una temporada entera de hace un año aporta mucho menos que cinco
+ * jornadas recientes, y es esa exposición real la que decide cuánto se encoge.
+ */
+function effectiveMatches(
+  matches: readonly HistoricalMatch[],
+  weightOf: (m: HistoricalMatch) => number,
+  teamIds: Set<string>,
+): Map<string, number> {
+  const exposure = new Map<string, number>();
+  for (const id of teamIds) exposure.set(id, 0);
+
+  for (const m of matches) {
+    const w = weightOf(m);
+    exposure.set(m.homeTeamId, exposure.get(m.homeTeamId)! + w);
+    exposure.set(m.awayTeamId, exposure.get(m.awayTeamId)! + w);
+  }
+
+  return exposure;
+}
+
+/**
+ * Acerca cada fuerza a 1 según la muestra que la respalda, y renormaliza.
+ *
+ * Es el estimador de James-Stein aplicado a un caso donde el sobreajuste es la
+ * norma: con poca muestra la media de la liga predice mejor que el dato propio
+ * del equipo, y con mucha el dato propio manda.
+ */
+function shrinkToMeanOne(
+  map: Map<string, number>,
+  exposure: Map<string, number>,
+  priorMatches: number,
+): void {
+  for (const [id, value] of map) {
+    const n = exposure.get(id) ?? 0;
+    const weight = n / (n + priorMatches);
+    map.set(id, 1 + (value - 1) * weight);
+  }
+
+  normalizeToMeanOne(map);
 }
 
 function normalizeToMeanOne(map: Map<string, number>): void {

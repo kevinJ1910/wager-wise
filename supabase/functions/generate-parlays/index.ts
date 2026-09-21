@@ -30,6 +30,24 @@ const MODEL_WEIGHT = 0.35;
 /** Ventaja mínima para considerar una selección. */
 const MIN_EDGE = 0.02;
 
+/**
+ * Hasta dónde se calculan selecciones con valor.
+ *
+ * Lo marca el horizonte de las casas, no el del calendario: sin cuota no hay
+ * ventaja que medir. Cubrirlo entero es lo que mantiene la pantalla de Valor
+ * con contenido toda la semana y no sólo la víspera de cada jornada.
+ */
+const CANDIDATE_HORIZON_HOURS = 8 * 24;
+
+/**
+ * Hasta dónde llega el "parlay del día".
+ *
+ * Más corto que las selecciones a propósito: un parlay diario que combinara
+ * partidos de dentro de una semana dejaría de ser del día, y las cuotas de esa
+ * jornada todavía se mueven mucho.
+ */
+const PARLAY_HORIZON_HOURS = 72;
+
 const TIERS = [
   { tier: 'safe' as const, minOdds: 1.5, maxOdds: 2.5, maxLegs: 2 },
   { tier: 'balanced' as const, minOdds: 2.5, maxOdds: 6, maxLegs: 3 },
@@ -88,8 +106,13 @@ Deno.serve(async () => {
     // Regenerar el día es idempotente: borramos lo anterior antes de escribir.
     await supabase.from('parlay_recommendations').delete().eq('for_date', today);
 
+    // Las selecciones sueltas llegan hasta el horizonte de las casas, pero el
+    // parlay del día sólo combina partidos cercanos.
+    const deadline = Date.now() + PARLAY_HORIZON_HOURS * 3_600_000;
+    const soon = candidates.filter((c) => new Date(c.kickoff).getTime() <= deadline);
+
     for (const spec of TIERS) {
-      const legs = pickLegs(candidates, spec, matrices);
+      const legs = pickLegs(soon, spec, matrices);
       if (legs.length < 2) {
         summary.notes.push(`${spec.tier}: sin combinación válida en el rango de cuota.`);
         continue;
@@ -121,7 +144,7 @@ async function buildCandidates(
   summary: { notes: string[] },
 ): Promise<{ candidates: Candidate[]; matrices: Map<string, number[][]> }> {
   const now = new Date();
-  const horizon = new Date(now.getTime() + 48 * 3_600_000);
+  const horizon = new Date(now.getTime() + CANDIDATE_HORIZON_HOURS * 3_600_000);
 
   const { data: fixtures, error } = await supabase
     .from('fixtures')
@@ -301,6 +324,19 @@ async function storePredictions(
   }));
 
   if (rows.length === 0) return 0;
+
+  // Cada pasada sustituye a la anterior para esos partidos, igual que las
+  // recomendaciones del día. Acumular una fila por ejecución dejaría varias
+  // versiones de la misma selección conviviendo, y cualquiera que leyera la
+  // tabla tendría que adivinar cuál es la vigente.
+  const fixtureIds = [...new Set(candidates.map((c) => c.fixtureId))];
+  const { error: clearError } = await supabase
+    .from('model_predictions')
+    .delete()
+    .in('fixture_id', fixtureIds);
+  if (clearError) {
+    throw new Error(`No se pudieron limpiar predicciones previas: ${clearError.message}`);
+  }
 
   const { error } = await supabase.from('model_predictions').insert(rows);
   if (error) throw new Error(`No se pudieron guardar predicciones: ${error.message}`);

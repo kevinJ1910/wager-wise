@@ -1,21 +1,35 @@
 /**
  * Aviso de datos de muestra.
  *
- * Mientras no haya claves de API configuradas, la app calcula con partidos de
- * ejemplo. La matemática es real, los partidos no — y eso tiene que estar dicho
- * en pantalla, no sólo en el README. Un análisis de apuestas que parece real sin
- * serlo es peor que no tener pantalla.
+ * La app cae a partidos de ejemplo en dos situaciones: sin claves configuradas,
+ * o con el backend conectado pero sin partidos por jugar —un parón de
+ * selecciones deja tres semanas de calendario vacío—. La matemática es real en
+ * ambos casos, los partidos no, y eso tiene que estar dicho en pantalla y no
+ * sólo en el README: un análisis de apuestas que parece real sin serlo es peor
+ * que no tener pantalla.
  */
 
 import { GlassCard, Txt } from '@wagerwise/ui';
 import React from 'react';
 import { StyleSheet } from 'react-native';
+import type { DataSource } from '@/lib/queries';
 import { isBackendConfigured } from '@/lib/supabase';
 
-export function SampleDataBanner(): React.ReactElement | null {
-  // En cuanto el backend esté conectado y sirviendo datos, este aviso
-  // desaparece solo.
-  if (isBackendConfigured) return null;
+interface Props {
+  source: DataSource;
+  /** Backend conectado, pero sin partidos en la ventana de calendario. */
+  emptySchedule?: boolean;
+}
+
+export function SampleDataBanner({ source, emptySchedule }: Props): React.ReactElement | null {
+  if (source === 'live') return null;
+
+  const reason =
+    !isBackendConfigured
+      ? 'Los cálculos son reales, pero los partidos y las cuotas son de ejemplo. Configura las claves de API para ver los partidos de hoy.'
+      : emptySchedule
+        ? 'No hay partidos programados en los próximos días —las ligas están en parón—. Mientras tanto, estos son partidos de ejemplo.'
+        : 'No se pudieron cargar los partidos reales. Mostrando ejemplos mientras se restablece la conexión.';
 
   return (
     <GlassCard variant="card" style={styles.banner}>
@@ -23,8 +37,7 @@ export function SampleDataBanner(): React.ReactElement | null {
         Datos de muestra
       </Txt>
       <Txt variant="caption" tone="ink2">
-        Los cálculos son reales, pero los partidos y las cuotas son de ejemplo. Configura las
-        claves de API para ver los partidos de hoy.
+        {reason}
       </Txt>
     </GlassCard>
   );

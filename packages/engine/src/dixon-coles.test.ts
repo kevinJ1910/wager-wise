@@ -249,3 +249,120 @@ describe('ajuste del modelo', () => {
     );
   });
 });
+
+describe('encogimiento hacia la media de la liga', () => {
+  /**
+   * Liga donde un equipo acaba de llegar: mismos rivales, pero él sólo ha
+   * jugado dos partidos y los ganó goleando. Sin encoger, el ajuste se cree
+   * esa muestra; con encogimiento, tiene que quedar mucho más cerca de 1.
+   */
+  function leagueWithNewcomer(): HistoricalMatch[] {
+    const matches = syntheticLeague();
+
+    // Dos goleadas del recién llegado, recientes para que pesen al máximo.
+    const last = matches.length;
+    matches.push(
+      {
+        homeTeamId: 'nuevo',
+        awayTeamId: 'flojo',
+        homeGoals: 6,
+        awayGoals: 0,
+        date: day(last),
+      },
+      {
+        homeTeamId: 'nuevo',
+        awayTeamId: 'medio',
+        homeGoals: 5,
+        awayGoals: 0,
+        date: day(last + 1),
+      },
+    );
+
+    return matches;
+  }
+
+  it('acerca a 1 al equipo con poca muestra', () => {
+    const matches = leagueWithNewcomer();
+    const asOf = day(matches.length + 1);
+
+    const crudo = fitDixonColes(matches, { asOf, priorMatches: 0 });
+    const encogido = fitDixonColes(matches, { asOf, priorMatches: 12 });
+
+    const ataqueCrudo = crudo.ratings.get('nuevo')!.attack;
+    const ataqueEncogido = encogido.ratings.get('nuevo')!.attack;
+
+    expect(ataqueCrudo).toBeGreaterThan(1.8);
+    expect(ataqueEncogido).toBeLessThan(ataqueCrudo);
+    // Con dos partidos frente a un prior de doce, conserva menos de un cuarto
+    // de su desviación respecto a la media.
+    expect(ataqueEncogido - 1).toBeLessThan((ataqueCrudo - 1) * 0.35);
+  });
+
+  it('apenas toca a los equipos con muestra amplia', () => {
+    const matches = leagueWithNewcomer();
+    const asOf = day(matches.length + 1);
+
+    const crudo = fitDixonColes(matches, { asOf, priorMatches: 0 });
+    const encogido = fitDixonColes(matches, { asOf, priorMatches: 12 });
+
+    // 'fuerte' lleva sesenta partidos: su fuerza debe sobrevivir al encogimiento.
+    const antes = crudo.ratings.get('fuerte')!.attack;
+    const despues = encogido.ratings.get('fuerte')!.attack;
+
+    expect(Math.abs(despues - antes)).toBeLessThan(0.25);
+    expect(despues).toBeGreaterThan(1);
+  });
+
+  it('mantiene el orden de fuerzas', () => {
+    const model = fitDixonColes(syntheticLeague(), { asOf: day(120), priorMatches: 12 });
+
+    const fuerte = model.ratings.get('fuerte')!.attack;
+    const bueno = model.ratings.get('bueno')!.attack;
+    const flojo = model.ratings.get('flojo')!.attack;
+
+    expect(fuerte).toBeGreaterThan(bueno);
+    expect(bueno).toBeGreaterThan(flojo);
+  });
+
+  it('deja la media de las fuerzas en 1', () => {
+    const model = fitDixonColes(leagueWithNewcomer(), { asOf: day(130), priorMatches: 12 });
+
+    const ataques = [...model.ratings.values()].map((r) => r.attack);
+    const media = ataques.reduce((a, b) => a + b, 0) / ataques.length;
+
+    expect(media).toBeCloseTo(1, 6);
+  });
+
+  it('frena las tasas de gol delirantes que produce una muestra corta', () => {
+    const matches = leagueWithNewcomer();
+    const asOf = day(matches.length + 1);
+
+    const crudo = fitDixonColes(matches, { asOf, priorMatches: 0 });
+    const encogido = fitDixonColes(matches, { asOf, priorMatches: 12 });
+
+    // Sin encoger, dos goleadas dan un equipo que marcaría siete goles: el
+    // ajuste se ha creído la muestra entera.
+    expect(expectedGoals(crudo, 'nuevo', 'flojo').lambda).toBeGreaterThan(6);
+    expect(expectedGoals(encogido, 'nuevo', 'flojo').lambda).toBeLessThan(4.5);
+  });
+
+  it('aleja del 100% la probabilidad de un favorito con dos partidos', () => {
+    const matches = leagueWithNewcomer();
+    const asOf = day(matches.length + 1);
+
+    const sinEncoger = matchResultProbabilities(
+      scoreMatrix(fitDixonColes(matches, { asOf, priorMatches: 0 }), 'nuevo', 'flojo'),
+    );
+    const conEncoger = matchResultProbabilities(
+      scoreMatrix(fitDixonColes(matches, { asOf, priorMatches: 12 }), 'nuevo', 'flojo'),
+    );
+
+    // El 99,8% de partida es una certeza que ningún partido de fútbol tiene.
+    expect(sinEncoger.home).toBeGreaterThan(0.99);
+    expect(conEncoger.home).toBeLessThan(0.95);
+    // Y lo que se le quita va a empate y derrota, no se evapora.
+    expect(conEncoger.draw + conEncoger.away).toBeGreaterThan(
+      (sinEncoger.draw + sinEncoger.away) * 10,
+    );
+  });
+});

@@ -123,7 +123,16 @@ function useProtectedRoute(): void {
       return;
     }
 
-    if (onboarded && !inTabs) {
+    // Sólo las rutas de entrada —splash, auth, onboarding— llevan a las
+    // pestañas. Rebotar cualquier ruta fuera del grupo dejaría inalcanzable el
+    // detalle de partido, que vive fuera a propósito para poder abrirse encima
+    // de la pestaña que sea.
+    // El splash es la raíz, sin segmento; las rutas tipadas no lo modelan como
+    // array vacío, así que se lee como cadena suelta.
+    const [first] = segments as readonly (string | undefined)[];
+    const onEntryRoute = !first || first === 'auth' || onOnboarding;
+
+    if (onboarded && onEntryRoute) {
       router.replace('/(tabs)');
     }
   }, [session, initializing, onboarded, segments, router]);

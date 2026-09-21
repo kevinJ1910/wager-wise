@@ -13,7 +13,8 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { SAMPLE_FIXTURES, type SampleFixture, type SampleMarket } from '@/lib/sample-data';
+import type { FixtureAnalysis, FixtureView, MarketOffer } from '@/lib/fixtures';
+import { useFixtureAnalyses, useFixtureData } from '@/lib/queries';
 import { useBuilder } from '@/state/builder';
 
 export default function MatchRoute(): React.ReactElement {
@@ -21,7 +22,9 @@ export default function MatchRoute(): React.ReactElement {
   const router = useRouter();
   const { theme } = useTheme();
 
-  const fixture = SAMPLE_FIXTURES.find((f) => f.id === id);
+  const data = useFixtureData();
+  const fixture = data.fixtures.find((f) => f.id === id);
+  const analyses = useFixtureAnalyses(fixture?.id);
 
   const legs = useBuilder((s) => s.legs);
   const toggleLeg = useBuilder((s) => s.toggleLeg);
@@ -80,9 +83,9 @@ export default function MatchRoute(): React.ReactElement {
           <View style={styles.probRow}>
             {(
               [
-                { key: 'Local', value: probabilities.home, odds: fixture.matchOdds[0] },
-                { key: 'Empate', value: probabilities.draw, odds: fixture.matchOdds[1] },
-                { key: 'Visita', value: probabilities.away, odds: fixture.matchOdds[2] },
+                { key: 'Local', value: probabilities.home, odds: fixture.matchOdds?.[0] },
+                { key: 'Empate', value: probabilities.draw, odds: fixture.matchOdds?.[1] },
+                { key: 'Visita', value: probabilities.away, odds: fixture.matchOdds?.[2] },
               ] as const
             ).map((entry) => (
               <GlassCard key={entry.key} variant="inner" radius={18} style={styles.probCell}>
@@ -93,7 +96,7 @@ export default function MatchRoute(): React.ReactElement {
                   {formatPercent(entry.value, 0)}
                 </Txt>
                 <Txt variant="caption" tone="ink3">
-                  cuota {formatOdds(entry.odds)}
+                  {entry.odds ? `cuota ${formatOdds(entry.odds)}` : 'sin cuota'}
                 </Txt>
               </GlassCard>
             ))}
@@ -121,6 +124,15 @@ export default function MatchRoute(): React.ReactElement {
             tasas, no de una tabla aparte.
           </Txt>
         </GlassCard>
+
+        {(analyses.data ?? []).length > 0 ? (
+          <>
+            <Overline>Análisis · Gemini</Overline>
+            {(analyses.data ?? []).map((analysis) => (
+              <AnalysisCard key={analysis.id} analysis={analysis} />
+            ))}
+          </>
+        ) : null}
 
         <Overline>Mercados · toca para añadir</Overline>
 
@@ -153,14 +165,60 @@ export default function MatchRoute(): React.ReactElement {
   );
 }
 
+/**
+ * Lo que aporta la IA, separado de lo que calcula el motor.
+ *
+ * Gemini nunca produce probabilidades: recibe las del motor y devuelve
+ * contexto. La confianza que muestra es sobre ese contexto —cuánta información
+ * verificable encontró—, no sobre que la apuesta vaya a acertar, y por eso se
+ * etiqueta así en pantalla.
+ */
+function AnalysisCard({ analysis }: { analysis: FixtureAnalysis }): React.ReactElement {
+  return (
+    <GlassCard variant="card" style={styles.analysisCard}>
+      <View style={styles.analysisHeader}>
+        <Txt variant="caption" tone="ink3" uppercase>
+          {analysis.model}
+        </Txt>
+        {analysis.confidence !== null ? (
+          <Txt variant="caption" tone="ink3">
+            contexto {analysis.confidence}/100
+          </Txt>
+        ) : null}
+      </View>
+
+      <Txt variant="bodySmall">{analysis.reasoning}</Txt>
+
+      {analysis.facts.length > 0 ? (
+        <View style={styles.factRow}>
+          {analysis.facts.map((fact) => (
+            <GlassCard key={`${fact.label}:${fact.value}`} variant="inner" radius={13} style={styles.factChip}>
+              <Txt variant="caption" tone="ink3">
+                {fact.label}
+              </Txt>
+              <Txt variant="caption">{fact.value}</Txt>
+            </GlassCard>
+          ))}
+        </View>
+      ) : null}
+
+      {analysis.veto ? (
+        <Txt variant="caption" tone="warn">
+          Veto: {analysis.vetoReason ?? 'la IA desaconseja esta selección.'}
+        </Txt>
+      ) : null}
+    </GlassCard>
+  );
+}
+
 function MarketRow({
   fixture,
   market,
   selected,
   onToggle,
 }: {
-  fixture: SampleFixture;
-  market: SampleMarket;
+  fixture: FixtureView;
+  market: MarketOffer;
   selected: boolean;
   onToggle: () => void;
 }): React.ReactElement {
@@ -204,7 +262,7 @@ function MarketRow({
   );
 }
 
-function toLeg(fixture: SampleFixture, market: SampleMarket): ParlayLeg {
+function toLeg(fixture: FixtureView, market: MarketOffer): ParlayLeg {
   return {
     id: market.id,
     fixtureId: fixture.id,
@@ -229,6 +287,10 @@ const styles = StyleSheet.create({
   probValue: {},
 
   ratesCard: { padding: 17, gap: 12 },
+  analysisCard: { padding: 17, gap: 10 },
+  analysisHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  factRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  factChip: { paddingVertical: 7, paddingHorizontal: 11, gap: 2 },
   ratesRow: { flexDirection: 'row', gap: 16 },
   rateCell: { flex: 1, gap: 4 },
 

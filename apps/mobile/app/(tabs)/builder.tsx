@@ -14,7 +14,7 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { SAMPLE_MATRICES } from '@/lib/sample-data';
+import { useFixtureData } from '@/lib/queries';
 import { markPlaced, useBuilder } from '@/state/builder';
 import { usePreferences } from '@/state/preferences';
 
@@ -36,7 +36,11 @@ export default function BuilderRoute(): React.ReactElement {
 
   const stake = (bankroll * stakePct) / 100;
 
-  const evaluation = useMemo(() => evaluateParlay(legs, SAMPLE_MATRICES), [legs]);
+  // Las matrices vienen de la misma fuente que las pantallas de selección: sin
+  // la del partido, la conjunta exacta no se puede calcular y el auditor
+  // perdería justo lo que lo distingue.
+  const { matrices } = useFixtureData();
+  const evaluation = useMemo(() => evaluateParlay(legs, matrices), [legs, matrices]);
   const audit = useMemo(
     () => auditParlay({ legs, evaluation, profile, bankroll, stakeAmount: stake }),
     [legs, evaluation, profile, bankroll, stake],

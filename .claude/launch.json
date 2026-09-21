@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wagerwise-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@wagerwise/mobile", "exec", "expo", "start", "--web"],
+      "port": 8081
+    }
+  ]
+}
