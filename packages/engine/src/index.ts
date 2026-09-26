@@ -77,3 +77,23 @@ export {
   type AuditResult,
   type CheckSeverity,
 } from './parlay.js';
+
+export {
+  buildBacktestEvents,
+  calibrateModelWeight,
+  simulateBetting,
+  scoreEvents,
+  blendEvent,
+  logLoss,
+  brierScore,
+  type BacktestEvent,
+  type BacktestFixture,
+  type BacktestMarket,
+  type BacktestOptions,
+  type BettingSimulation,
+  type LeagueMatch,
+  type MarketQuotes,
+  type SkippedFixture,
+  type WeightCalibration,
+  type WeightScore,
+} from './backtest.js';

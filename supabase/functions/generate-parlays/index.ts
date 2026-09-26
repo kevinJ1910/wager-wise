@@ -24,8 +24,12 @@ import {
 import { analyzeParlay, type LegBrief } from '../_shared/gemini.ts';
 import { trackRun } from '../_shared/quota.ts';
 
-/** Peso del modelo frente al consenso. Calibrar con backtesting, no a ojo. */
-const MODEL_WEIGHT = 0.35;
+/**
+ * Peso del modelo frente al consenso mientras no haya calibración aplicable.
+ * El valor real sale de la última fila de `model_calibrations` que el backtest
+ * semanal marcó como aplicable (ver `backtest`).
+ */
+const DEFAULT_MODEL_WEIGHT = 0.35;
 
 /** Ventaja mínima para considerar una selección. */
 const MIN_EDGE = 0.02;
@@ -88,10 +92,18 @@ Deno.serve(async () => {
   );
 
   const finishRun = await trackRun(supabase, 'generate-parlays');
-  const summary = { candidates: 0, predictions: 0, parlays: 0, analyses: 0, notes: [] as string[] };
+  const summary = {
+    modelWeight: DEFAULT_MODEL_WEIGHT,
+    candidates: 0,
+    predictions: 0,
+    parlays: 0,
+    analyses: 0,
+    notes: [] as string[],
+  };
 
   try {
-    const { candidates, matrices } = await buildCandidates(supabase, summary);
+    summary.modelWeight = await currentModelWeight(supabase);
+    const { candidates, matrices } = await buildCandidates(supabase, summary.modelWeight, summary);
     summary.candidates = candidates.length;
 
     if (candidates.length === 0) {
@@ -141,6 +153,7 @@ Deno.serve(async () => {
  */
 async function buildCandidates(
   supabase: SupabaseClient,
+  modelWeight: number,
   summary: { notes: string[] },
 ): Promise<{ candidates: Candidate[]; matrices: Map<string, number[][]> }> {
   const now = new Date();
@@ -192,7 +205,7 @@ async function buildCandidates(
     const league = fixture.leagues?.name ?? leagueId;
 
     candidates.push(
-      ...evaluateFixture(matrix, snapshots, {
+      ...evaluateFixture(matrix, snapshots, modelWeight, {
         fixtureId,
         matchLabel,
         league,
@@ -202,6 +215,26 @@ async function buildCandidates(
   }
 
   return { candidates, matrices };
+}
+
+/**
+ * El `w` de la última calibración aplicable, o el valor por defecto.
+ *
+ * Un fallo de lectura no para la generación: el valor por defecto es con lo que
+ * la app funcionó hasta tener backtesting, peor pero no roto.
+ */
+async function currentModelWeight(supabase: SupabaseClient): Promise<number> {
+  const { data, error } = await supabase
+    .from('model_calibrations')
+    .select('model_weight')
+    .eq('applied', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return DEFAULT_MODEL_WEIGHT;
+  const weight = Number(data.model_weight);
+  return Number.isFinite(weight) && weight >= 0 && weight <= 1 ? weight : DEFAULT_MODEL_WEIGHT;
 }
 
 /** Matriz de marcadores del partido a partir del ajuste guardado. */
@@ -242,6 +275,7 @@ async function buildMatrix(
 function evaluateFixture(
   matrix: number[][],
   snapshots: Record<string, unknown>[],
+  modelWeight: number,
   context: { fixtureId: string; matchLabel: string; league: string; kickoff: string },
 ): Candidate[] {
   // Agrupamos por mercado y nos quedamos con el snapshot más reciente de cada
@@ -285,7 +319,7 @@ function evaluateFixture(
       if (marketProbability === undefined || !best) return;
 
       const modelProbability = selectionProbability(matrix, selection);
-      const blended = blendProbabilities(modelProbability, marketProbability, MODEL_WEIGHT);
+      const blended = blendProbabilities(modelProbability, marketProbability, modelWeight);
       const edge = computeEdge(blended, best.odds);
 
       if (edge < MIN_EDGE) return;

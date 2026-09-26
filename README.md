@@ -71,6 +71,52 @@ marcador, no un partido sin resolver.
 
 ---
 
+## Y al modelo, también
+
+La mezcla `p = w·modelo + (1−w)·mercado` arrancó con `w = 0.35`, que era una
+conjetura razonable y nada más. La Fase 4 la sustituye por un dato: la Edge
+Function `backtest` reproduce el motor sobre **1.477 partidos ya jugados** de las
+cuatro ligas (sept. 2025 – sept. 2026) y elige el `w` que mejor los predice.
+
+Las reglas del backtest son las que lo hacen creíble:
+
+- **Nada del futuro.** Cada partido se predice con un Dixon-Coles reajustado sólo
+  con lo jugado *antes de ese día* (`backtest.test.ts` lo comprueba colando
+  goleadas posteriores y verificando que la predicción no se mueve).
+- **Las cuotas del momento de decidir.** football-data.co.uk publica gratis las
+  cuotas de 7-9 casas recogidas uno a tres días antes de cada partido, y las de
+  cierre. Con las previas se decide; el cierre sólo se usa para medir el CLV.
+- **`w` por log loss, no por ROI.** El ROI de unos cientos de apuestas es casi
+  todo varianza, y elegir `w` por él sería ajustar el ruido. La log loss usa
+  todos los partidos, se apueste o no.
+
+El resultado no favorece al producto, y se cuenta igual:
+
+```
+log loss (más bajo es mejor)      1X2     más/menos 2.5
+  modelo solo                    1.017        0.688
+  mercado solo                   0.979        0.673
+  w óptimo                         0 %  (en las cuatro ligas y los dos mercados)
+
+si se hubieran seguido las selecciones con w = 35% y ventaja ≥ 2%
+  1.451 apuestas · ROI −9,4% ± 9,4% · CLV −0,3% · batió el cierre en 43%
+```
+
+La log loss crece de forma monótona desde `w = 0` hasta `w = 1`, y sigue así con
+dieciséis combinaciones de vida media y encogimiento validadas fuera de muestra.
+Un Dixon-Coles que sólo mira goles no sabe nada que el consenso de siete casas
+no sepa ya, y las "ventajas" que encontraba eran su propio error de estimación.
+El CLV negativo lo confirma por otra vía: el mercado se movía en contra de sus
+selecciones antes del saque.
+
+`generate-parlays` usa el `w` de la última calibración con muestra suficiente, así
+que a partir de ahora sólo marca valor cuando una casa paga por encima del
+consenso de las demás. La pantalla **Cómo le va al modelo** (desde Perfil)
+enseña todo esto al usuario con los números del último backtest, que se repite
+cada lunes.
+
+---
+
 ## El ajuste encoge hacia la media
 
 Dixon-Coles estima dos parámetros por equipo. En septiembre cada equipo lleva
@@ -121,7 +167,7 @@ app y en el backend.
 
 ```bash
 pnpm install
-pnpm test          # 154 tests
+pnpm test          # 208 tests
 pnpm typecheck
 ```
 
@@ -143,8 +189,12 @@ supabase db push
 cp .env.example .env                            # rellena los valores
 supabase secrets set --env-file .env
 supabase functions deploy ingest-fixtures ingest-odds fit-model generate-parlays \
-  settle-bets send-alerts
+  settle-bets send-alerts ingest-history backtest --import-map supabase/functions/deno.json
 ```
+
+Las ligas viven en un único registro, `supabase/functions/_shared/leagues.ts`,
+con el código de cada fuente. Añadir una es una línea, dentro del presupuesto
+de abajo.
 
 Las Edge Functions se comprueban con Deno (el motor compilado lleva directivas
 `@ts-self-types` para que Deno encuentre sus tipos):
@@ -178,20 +228,28 @@ explicaciones.
 
 | Proveedor | Límite | Uso previsto |
 |---|---|---|
-| football-data.org | 10 req/min | 12/día (por liga y pasada: calendario, y temporada anterior para el ajuste) |
-| The Odds API | 500 créditos/mes | ~360/mes (2 mercados × 1 región × 3 pasadas × 2 ligas) |
+| football-data.org | 10 req/min | 8 por pasada, 3 pasadas/día (calendario y temporada anterior, × 4 ligas) |
+| The Odds API | 500 créditos/mes | ~350/mes (2 créditos por liga y pasada; ~85-90 por liga) |
+| football-data.co.uk | sin límite publicado | 8 CSV por semana, para el backtesting |
 | Gemini Flash | ~1.000-1.500 req/día | ~40/día (un análisis por partido) |
+
+Con tres pasadas diarias por liga, The Odds API sólo daba para dos ligas. Ahora
+cada liga se pide una vez al día mientras tenga partidos en la semana, y repite
+sólo el día en que juega, que es cuando la cuota se mueve y cuando hace falta un
+precio cercano al saque para el CLV. Así caben La Liga, Premier League, Serie A
+y Bundesliga; una quinta rozaría el tope.
 
 football-data.org sustituye a API-Football como única fuente de partidos: su
 tier gratuito da la temporada en curso completa (jugados y por jugar) en las
-12 competiciones que cubre —La Liga y Premier League entre ellas—, justo lo
+12 competiciones que cubre —las cuatro de la app entre ellas—, justo lo
 contrario de API-Football, cuyo plan free bloquea la temporada actual y sólo
 permite consultar 2022-2024. Al venir calendario e histórico del mismo
 proveedor, comparten el mismo espacio de ids sin mapear nombres de equipo
 entre fuentes.
 
-`fit-model`, `settle-bets` y `send-alerts` no aparecen en la tabla porque no
-gastan nada: los dos primeros sólo leen la base, y el push de Expo es gratuito.
+`fit-model`, `settle-bets`, `backtest` y `send-alerts` no aparecen en la tabla
+porque no gastan nada: los tres primeros sólo leen la base, y el push de Expo es
+gratuito.
 
 Cada llamada se registra en `api_usage_log` y un guard corta **antes** de
 superar la cuota, para no quedarse sin datos a mitad de periodo. La ingesta de
@@ -219,16 +277,22 @@ contra el marcador real y captura la línea de cierre, y la pantalla Apuestas
 muestra P/L, acierto, ROI y CLV. El perfil viaja con la cuenta, no con el
 dispositivo, y sus interruptores afectan de verdad al auditor.
 
-Pendiente, por fase: backtesting con calibración de `w`, props de jugador y
-builds de EAS (4). Las props necesitan plan de pago en The Odds API; las
-pantallas ya soportan una lista de mercados dinámica, así que activarlas no
-exige rehacer nada.
+Fase 4, lo que depende del código: backtesting walk-forward con calibración de
+`w` (ver arriba), Serie A y Bundesliga, un emparejador de nombres de equipo
+entre proveedores con tests, y la configuración de EAS (`apps/mobile/eas.json`).
+Las alertas push respetan ahora las ligas que cada usuario sigue, como promete
+el onboarding.
 
-**Las notificaciones push no se pueden probar todavía.** Expo Go dejó de
-entregar push remoto en SDK 53, así que `registerPushToken` devuelve
-`unsupported` hasta que haya un development build de EAS (Fase 4). El registro
-del token, la tabla y la función `send-alerts` están hechos y el interruptor de
-Perfil se apaga solo explicando por qué.
+Lo que no depende del código y queda pendiente:
+
+- **Builds y tiendas.** Necesitan tu cuenta de Expo (`eas init`, que da el
+  `EAS_PROJECT_ID`), las cuentas de desarrollador de Apple y Google, y un icono
+  de 1024×1024 que el repo todavía no tiene.
+- **Props de jugador.** Necesitan plan de pago en The Odds API; las pantallas ya
+  soportan una lista de mercados dinámica.
+- **Push.** Expo Go dejó de entregar push remoto en SDK 53, así que
+  `registerPushToken` devuelve `unsupported` hasta el primer development build.
+  El registro del token, la tabla y `send-alerts` están hechos.
 
 ---
 

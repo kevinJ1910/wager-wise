@@ -54,6 +54,9 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    // Lo crea `eas init`. Va por entorno y no escrito aquí porque identifica la
+    // cuenta de Expo del propietario, no el código. Sin él no hay token de push.
+    ...(process.env.EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID } } : {}),
   },
 };
 

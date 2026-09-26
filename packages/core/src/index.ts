@@ -41,3 +41,13 @@ export {
   type ParlayTier,
   type CurrencyCode,
 } from './domain.js';
+
+export {
+  calibrationSchema,
+  calibrationMetricsSchema,
+  type Calibration,
+  type CalibrationMetrics,
+  type BettingSimulationRow,
+} from './calibration.js';
+
+export { normalizeTeamName, teamNameScore, bestFixtureMatch } from './team-names.js';

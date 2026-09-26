@@ -248,6 +248,18 @@ export default function ProfileRoute(): React.ReactElement {
 
         <GlassCard variant="card" style={styles.actionsCard}>
           <Pressable
+            onPress={() => router.push('/model')}
+            accessibilityRole="button"
+            style={styles.actionRow}
+          >
+            <Txt variant="bodySmall" tone="accent">
+              Cómo le va al modelo
+            </Txt>
+          </Pressable>
+
+          <Divider />
+
+          <Pressable
             onPress={() => {
               preferences.setOnboarded(false);
               router.replace('/onboarding');

@@ -5,12 +5,17 @@
  * encuentra ninguna selección por encima del umbral, no se envía nada. Un push
  * diario que a veces dice "hoy no hay nada" entrena al usuario a ignorarlos.
  *
+ * Cada usuario recibe la mejor selección de las ligas que sigue —es lo que
+ * promete el onboarding— y nada si en sus ligas no hay valor ese día. Quien no
+ * marcó ninguna liga recibe la mejor de todas.
+ *
  * Lo que sale del servidor es el token de Expo y una frase sobre fútbol. Ni
  * correo, ni bankroll, ni identificador de usuario: el push no es un canal por
  * el que deban viajar datos personales.
  */
 
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { LEAGUES, leagueId } from '../_shared/leagues.ts';
 import { trackRun } from '../_shared/quota.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
@@ -34,35 +39,38 @@ Deno.serve(async () => {
   const summary = { alerts: 0, recipients: 0, sent: 0, pruned: 0, notes: [] as string[] };
 
   try {
-    const best = await bestAlert(supabase);
+    const alerts = await valueAlerts(supabase);
+    summary.alerts = alerts.length;
 
-    if (!best) {
+    if (alerts.length === 0) {
       summary.notes.push('Sin selecciones por encima del umbral; no se envía nada.');
       await finishRun('ok', summary);
       return json(summary);
     }
 
-    summary.alerts = best.count;
+    const subscribers = await fetchSubscribers(supabase);
+    summary.recipients = subscribers.length;
 
-    const tokens = await tokensOfSubscribers(supabase);
-    summary.recipients = tokens.length;
-
-    if (tokens.length === 0) {
-      await finishRun('ok', summary);
-      return json(summary);
+    // Agrupados por mensaje: todos los que siguen las mismas ligas reciben el
+    // mismo texto, y así se aprovechan los lotes de cien de Expo.
+    const byBody = new Map<string, string[]>();
+    for (const subscriber of subscribers) {
+      const body = messageFor(alerts, subscriber.leagues);
+      if (!body) continue;
+      const bucket = byBody.get(body) ?? [];
+      bucket.push(...subscriber.tokens);
+      byBody.set(body, bucket);
     }
 
-    const body =
-      best.count > 1
-        ? `${best.label} · ${best.matchLabel} (EV +${(best.expectedValue * 100).toFixed(1)}%) y ${best.count - 1} más.`
-        : `${best.label} · ${best.matchLabel} (EV +${(best.expectedValue * 100).toFixed(1)}%).`;
-
-    for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
-      const batch = tokens.slice(i, i + BATCH_SIZE);
-      const result = await push(batch, body);
-      summary.sent += result.sent;
-      summary.pruned += await pruneDeadTokens(supabase, result.dead);
-      if (result.note) summary.notes.push(result.note);
+    for (const [body, tokens] of byBody) {
+      const unique = [...new Set(tokens)];
+      for (let i = 0; i < unique.length; i += BATCH_SIZE) {
+        const batch = unique.slice(i, i + BATCH_SIZE);
+        const result = await push(batch, body);
+        summary.sent += result.sent;
+        summary.pruned += await pruneDeadTokens(supabase, result.dead);
+        if (result.note) summary.notes.push(result.note);
+      }
     }
 
     await finishRun('ok', summary);
@@ -79,13 +87,14 @@ Deno.serve(async () => {
 // ─────────────────────────────────────────────────────────────
 
 interface Alert {
+  leagueId: string;
   label: string;
   matchLabel: string;
   expectedValue: number;
-  count: number;
 }
 
-async function bestAlert(supabase: SupabaseClient): Promise<Alert | null> {
+/** Selecciones por encima del umbral, de mayor a menor EV. */
+async function valueAlerts(supabase: SupabaseClient): Promise<Alert[]> {
   const now = new Date();
   const horizon = new Date(now.getTime() + HORIZON_HOURS * 3_600_000);
 
@@ -94,7 +103,7 @@ async function bestAlert(supabase: SupabaseClient): Promise<Alert | null> {
     .select(
       `selection, expected_value,
        fixtures!inner(
-         kickoff_at, status,
+         league_id, kickoff_at, status,
          home:teams!fixtures_home_team_id_fkey(name),
          away:teams!fixtures_away_team_id_fkey(name)
        )`,
@@ -104,25 +113,39 @@ async function bestAlert(supabase: SupabaseClient): Promise<Alert | null> {
     .gte('fixtures.kickoff_at', now.toISOString())
     .lte('fixtures.kickoff_at', horizon.toISOString())
     .order('expected_value', { ascending: false })
-    .limit(40);
+    .limit(100);
 
   if (error) throw new Error(`No se pudieron leer las alertas: ${error.message}`);
-  if (!data || data.length === 0) return null;
 
-  const rows = data as unknown as {
+  const rows = (data ?? []) as unknown as {
     selection: Record<string, unknown>;
     expected_value: number;
-    fixtures: { home: { name: string }; away: { name: string } };
+    fixtures: { league_id: string; home: { name: string }; away: { name: string } };
   }[];
 
-  const top = rows[0]!;
+  return rows.map((row) => ({
+    leagueId: row.fixtures.league_id,
+    label: describe(row.selection),
+    matchLabel: `${row.fixtures.home.name} vs ${row.fixtures.away.name}`,
+    expectedValue: row.expected_value,
+  }));
+}
 
-  return {
-    label: describe(top.selection),
-    matchLabel: `${top.fixtures.home.name} vs ${top.fixtures.away.name}`,
-    expectedValue: top.expected_value,
-    count: rows.length,
-  };
+/**
+ * El texto para un usuario, o null si sus ligas no tienen nada hoy.
+ *
+ * `null` en `leagues` es que no eligió ninguna, no que no quiera ninguna —quien
+ * no quiere alertas lo dice con el interruptor de Perfil— y recibe la mejor de
+ * todas. Un conjunto vacío es otra cosa: sólo sigue ligas que la app todavía
+ * no cubre, y mandarle una de La Liga rompería lo que se le prometió.
+ */
+function messageFor(alerts: Alert[], leagues: Set<string> | null): string | null {
+  const relevant = leagues === null ? alerts : alerts.filter((a) => leagues.has(a.leagueId));
+  const top = relevant[0];
+  if (!top) return null;
+
+  const headline = `${top.label} · ${top.matchLabel} (EV +${(top.expectedValue * 100).toFixed(1)}%)`;
+  return relevant.length > 1 ? `${headline} y ${relevant.length - 1} más.` : `${headline}.`;
 }
 
 /**
@@ -154,25 +177,50 @@ function describe(selection: Record<string, unknown>): string {
 // A quién
 // ─────────────────────────────────────────────────────────────
 
-async function tokensOfSubscribers(supabase: SupabaseClient): Promise<string[]> {
+/** Etiqueta del onboarding → id de liga. Las que aún no tienen datos se ignoran. */
+const LEAGUE_BY_LABEL = new Map(LEAGUES.map((league) => [league.followLabel, leagueId(league)]));
+
+async function fetchSubscribers(
+  supabase: SupabaseClient,
+): Promise<{ leagues: Set<string> | null; tokens: string[] }[]> {
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, followed_leagues')
     .eq('settings->>alerts', 'true');
 
   if (profilesError) throw new Error(`No se pudieron leer los perfiles: ${profilesError.message}`);
-
-  const ids = (profiles ?? []).map((row) => row.id as string);
-  if (ids.length === 0) return [];
+  if (!profiles || profiles.length === 0) return [];
 
   const { data, error } = await supabase
     .from('notification_tokens')
-    .select('token')
-    .in('user_id', ids);
+    .select('user_id, token')
+    .in('user_id', profiles.map((row) => row.id as string));
 
   if (error) throw new Error(`No se pudieron leer los tokens: ${error.message}`);
 
-  return [...new Set((data ?? []).map((row) => row.token as string))];
+  const tokensByUser = new Map<string, string[]>();
+  for (const row of data ?? []) {
+    const bucket = tokensByUser.get(row.user_id as string) ?? [];
+    bucket.push(row.token as string);
+    tokensByUser.set(row.user_id as string, bucket);
+  }
+
+  return profiles
+    .map((profile) => {
+      const labels = (profile.followed_leagues as string[] | null) ?? [];
+      return {
+        leagues:
+          labels.length === 0
+            ? null
+            : new Set(
+                labels
+                  .map((label) => LEAGUE_BY_LABEL.get(label))
+                  .filter((id): id is string => id !== undefined),
+              ),
+        tokens: tokensByUser.get(profile.id as string) ?? [],
+      };
+    })
+    .filter((subscriber) => subscriber.tokens.length > 0);
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
  *
  * Usa football-data.org en vez de API-Football: su tier gratuito da acceso
  * completo a la temporada en curso (partidos jugados y por jugar) en las 12
- * competiciones que cubre, entre ellas La Liga y Premier League — lo
+ * competiciones que cubre, entre ellas las cuatro que sigue la app — lo
  * contrario de API-Football, cuyo plan free bloquea la temporada actual y
  * sólo permite consultar 2022-2024. Al venir todo del mismo proveedor, el
  * calendario próximo y el histórico de ajuste comparten el mismo espacio de
@@ -21,13 +21,8 @@ import {
   seasonOf,
   type FootballDataMatch,
 } from '../_shared/football-data.ts';
+import { LEAGUES, type LeagueConfig } from '../_shared/leagues.ts';
 import { QuotaExceededError, reserveQuota, trackRun } from '../_shared/quota.ts';
-
-/** Ligas de la Fase 1. Los códigos son los de football-data.org. */
-const LEAGUES = [
-  { code: 'PD', name: 'La Liga', country: 'España' },
-  { code: 'PL', name: 'Premier League', country: 'Inglaterra' },
-];
 
 /**
  * Ventana de calendario futuro.
@@ -135,7 +130,7 @@ Deno.serve(async (req) => {
 
 async function upsertLeague(
   supabase: SupabaseClient,
-  league: (typeof LEAGUES)[number],
+  league: LeagueConfig,
 ): Promise<void> {
   const { error } = await supabase.from('leagues').upsert(
     {

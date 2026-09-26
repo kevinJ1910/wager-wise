@@ -154,63 +154,67 @@ export function fitDixonColes(
   const homeAdvantage =
     weightedAwayGoals > 0 ? Math.sqrt(weightedHomeGoals / weightedAwayGoals) : 1;
 
-  const attack = new Map<string, number>();
-  const defence = new Map<string, number>();
-  for (const id of teamIds) {
-    attack.set(id, 1);
-    defence.set(id, 1);
-  }
+  // El bucle trabaja sobre índices y arrays tipados en vez de mapas por id: el
+  // backtesting reajusta el modelo cientos de veces seguidas y aquí se va casi
+  // todo su tiempo. Pesos e índices se calculan una vez, no en cada iteración.
+  const ids = [...teamIds];
+  const indexOf = new Map(ids.map((id, i) => [id, i]));
+  const homeIndex = Int32Array.from(matches, (m) => indexOf.get(m.homeTeamId)!);
+  const awayIndex = Int32Array.from(matches, (m) => indexOf.get(m.awayTeamId)!);
+  const weights = Float64Array.from(matches, weightOf);
+
+  const teams = ids.length;
+  const att = new Float64Array(teams).fill(1);
+  const def = new Float64Array(teams).fill(1);
+  const attackScored = new Float64Array(teams);
+  const attackExpected = new Float64Array(teams);
+  const defenceConceded = new Float64Array(teams);
+  const defenceExpected = new Float64Array(teams);
 
   for (let iter = 0; iter < iterations; iter++) {
-    const attackScored = new Map<string, number>();
-    const attackExpected = new Map<string, number>();
-    const defenceConceded = new Map<string, number>();
-    const defenceExpected = new Map<string, number>();
-    for (const id of teamIds) {
-      attackScored.set(id, 0);
-      attackExpected.set(id, 0);
-      defenceConceded.set(id, 0);
-      defenceExpected.set(id, 0);
+    attackScored.fill(0);
+    attackExpected.fill(0);
+    defenceConceded.fill(0);
+    defenceExpected.fill(0);
+
+    for (let k = 0; k < matches.length; k++) {
+      const m = matches[k]!;
+      const w = weights[k]!;
+      const h = homeIndex[k]!;
+      const a = awayIndex[k]!;
+
+      const lambda = baseRate * att[h]! * def[a]! * homeAdvantage;
+      const mu = (baseRate * att[a]! * def[h]!) / homeAdvantage;
+
+      attackScored[h]! += w * m.homeGoals;
+      attackExpected[h]! += w * lambda;
+      attackScored[a]! += w * m.awayGoals;
+      attackExpected[a]! += w * mu;
+
+      defenceConceded[h]! += w * m.awayGoals;
+      defenceExpected[h]! += w * mu;
+      defenceConceded[a]! += w * m.homeGoals;
+      defenceExpected[a]! += w * lambda;
     }
 
-    for (const m of matches) {
-      const w = weightOf(m);
-      const ah = attack.get(m.homeTeamId)!;
-      const aa = attack.get(m.awayTeamId)!;
-      const dh = defence.get(m.homeTeamId)!;
-      const da = defence.get(m.awayTeamId)!;
-
-      const lambda = baseRate * ah * da * homeAdvantage;
-      const mu = (baseRate * aa * dh) / homeAdvantage;
-
-      attackScored.set(m.homeTeamId, attackScored.get(m.homeTeamId)! + w * m.homeGoals);
-      attackExpected.set(m.homeTeamId, attackExpected.get(m.homeTeamId)! + w * lambda);
-      attackScored.set(m.awayTeamId, attackScored.get(m.awayTeamId)! + w * m.awayGoals);
-      attackExpected.set(m.awayTeamId, attackExpected.get(m.awayTeamId)! + w * mu);
-
-      defenceConceded.set(m.homeTeamId, defenceConceded.get(m.homeTeamId)! + w * m.awayGoals);
-      defenceExpected.set(m.homeTeamId, defenceExpected.get(m.homeTeamId)! + w * mu);
-      defenceConceded.set(m.awayTeamId, defenceConceded.get(m.awayTeamId)! + w * m.homeGoals);
-      defenceExpected.set(m.awayTeamId, defenceExpected.get(m.awayTeamId)! + w * lambda);
-    }
-
-    for (const id of teamIds) {
-      const ae = attackExpected.get(id)!;
-      if (ae > 0) {
-        attack.set(id, clamp((attack.get(id)! * attackScored.get(id)!) / ae, 0.2, 5));
+    for (let t = 0; t < teams; t++) {
+      if (attackExpected[t]! > 0) {
+        att[t] = clamp((att[t]! * attackScored[t]!) / attackExpected[t]!, 0.2, 5);
       }
-      const de = defenceExpected.get(id)!;
-      if (de > 0) {
-        defence.set(id, clamp((defence.get(id)! * defenceConceded.get(id)!) / de, 0.2, 5));
+      if (defenceExpected[t]! > 0) {
+        def[t] = clamp((def[t]! * defenceConceded[t]!) / defenceExpected[t]!, 0.2, 5);
       }
     }
 
     // Normalización: las fuerzas son relativas a la liga, así que su media debe
     // quedar en 1. Sin esto, ataque y defensa derivan juntos sin cambiar las
     // predicciones y el modelo deja de ser interpretable.
-    normalizeToMeanOne(attack);
-    normalizeToMeanOne(defence);
+    normalizeArrayToMeanOne(att);
+    normalizeArrayToMeanOne(def);
   }
+
+  const attack = new Map(ids.map((id, i) => [id, att[i]!]));
+  const defence = new Map(ids.map((id, i) => [id, def[i]!]));
 
   // El encogimiento va al final, sobre el ajuste ya convergido: durante las
   // iteraciones sesgaría el reparto de goles esperados entre equipos.
@@ -277,6 +281,14 @@ function normalizeToMeanOne(map: Map<string, number>): void {
   const mean = sum / map.size;
   if (mean <= 0) return;
   for (const [k, v] of map) map.set(k, v / mean);
+}
+
+function normalizeArrayToMeanOne(values: Float64Array): void {
+  let sum = 0;
+  for (const v of values) sum += v;
+  const mean = sum / values.length;
+  if (mean <= 0) return;
+  for (let i = 0; i < values.length; i++) values[i] = values[i]! / mean;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
