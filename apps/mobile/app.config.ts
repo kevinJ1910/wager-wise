@@ -14,6 +14,8 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   scheme: 'wagerwise',
   userInterfaceStyle: 'automatic',
+  // Iconos generados a partir de Logo.tsx: mismo degradado, brillos y W.
+  icon: './assets/images/icon.png',
 
   ios: {
     supportsTablet: false,
@@ -26,7 +28,10 @@ const config: ExpoConfig = {
 
   android: {
     package: 'com.wagerwise.app',
-    adaptiveIcon: { backgroundColor: '#C15F3C' },
+    adaptiveIcon: {
+      foregroundImage: './assets/images/adaptive-icon.png',
+      backgroundColor: '#C15F3C',
+    },
   },
 
   plugins: [
@@ -42,6 +47,10 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
+        // Sin imagen, Android no compila: el tema nativo referencia
+        // splashscreen_logo y el plugin sólo lo genera si se le da una.
+        image: './assets/images/splash-icon.png',
+        imageWidth: 112,
         // Mismo fondo que el tema claro, para que no se vea un salto al arrancar.
         backgroundColor: '#F0EEE9',
         dark: { backgroundColor: '#171715' },
