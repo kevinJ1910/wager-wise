@@ -9,6 +9,7 @@ import type { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'WagerWise',
   slug: 'wagerwise',
+  owner: 'kevnjordn',
   version: '0.1.0',
   orientation: 'portrait',
   scheme: 'wagerwise',
@@ -54,9 +55,9 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    // Lo crea `eas init`. Va por entorno y no escrito aquí porque identifica la
-    // cuenta de Expo del propietario, no el código. Sin él no hay token de push.
-    ...(process.env.EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID } } : {}),
+    // Proyecto de EAS (lo creó `eas init`). No es secreto: sólo identifica el
+    // proyecto en expo.dev, y sin él no hay builds ni token de push.
+    eas: { projectId: '67fc6279-a5ff-4d0a-8f15-cbafab1c5b9f' },
   },
 };
 
