@@ -1,0 +1,15 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# React Native necesita un node_modules plano: Metro y Gradle resuelven paquetes
+# como babel-preset-expo desde la raíz de la app, y los módulos nativos no
+# pueden aparecer dos veces. pnpm 11 ya no lee esta opción de .npmrc; sin ella
+# instala enlazado y la build de Android falla.
+nodeLinker: hoisted
+
+allowBuilds:
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild

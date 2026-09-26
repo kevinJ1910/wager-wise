@@ -1,0 +1,24 @@
+{
+  "name": "@wagerwise/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/add-deno-types.mjs dist"
+  },
+  "dependencies": {
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4",
+    "typescript": "^5.9.2",
+    "@wagerwise/engine": "workspace:*"
+  }
+}

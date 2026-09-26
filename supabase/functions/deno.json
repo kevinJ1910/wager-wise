@@ -1,0 +1,11 @@
+{
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
+    "zod": "npm:zod@4"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["deno.window", "esnext"]
+  }
+}
