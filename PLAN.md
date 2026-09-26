@@ -221,7 +221,7 @@ Monorepo y tooling · proyecto Supabase con esquema y RLS · auth Google + email
 
 **Fase 4 —** Backtesting con calibración de `w` · props de jugador (requiere plan pago) · más ligas · builds EAS y envío a tiendas.
 
-> Resultado del backtesting (sept. 2026): sobre 1.477 partidos, el `w` óptimo es 0 — el consenso de mercado predice mejor que cualquier mezcla con Dixon-Coles, y seguir las selecciones con `w = 0.35` habría dado un ROI de −9,4 % ± 9,4 % con CLV negativo. Ver README, "Y al modelo, también".
+> Resultado del backtesting (sept. 2026): sobre 1.477 partidos, el `w` óptimo es 0 — el consenso de mercado predice mejor que cualquier mezcla con Dixon-Coles, y seguir las selecciones con `w = 0.35` habría dado un ROI de −10,2 % ± 11,8 % con CLV negativo. La app pasa a ser un auditor que busca el mejor precio: ver README, "Y al modelo, también".
 
 ---
 

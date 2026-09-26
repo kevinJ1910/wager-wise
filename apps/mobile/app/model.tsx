@@ -155,8 +155,8 @@ function Report({ calibration }: { calibration: Calibration }): React.ReactEleme
           <Txt variant="caption" tone="ink3">
             Una unidad plana en cada selección con ventaja de al menos{' '}
             {formatPercent(PRODUCTION_EDGE, 0)}, a la mejor cuota previa. El margen es de dos
-            errores estándar: un ROI que cabe en él es indistinguible de cero. Incluye Betfair
-            Exchange sin descontar su comisión, así que el resultado real sería algo peor.
+            errores estándar: un ROI que cabe en él es indistinguible de cero. Las cuotas de los
+            exchanges ya descuentan su comisión.
           </Txt>
         </GlassCard>
       ) : null}

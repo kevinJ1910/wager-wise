@@ -7,7 +7,12 @@
  * advertencia al lado.
  */
 
-import { jointProbability, selectionCorrelation, type Selection } from './markets.js';
+import {
+  jointProbability,
+  selectionCorrelation,
+  selectionProbability,
+  type Selection,
+} from './markets.js';
 import { expectedValue, type RiskProfile } from './value.js';
 
 export interface ParlayLeg {
@@ -106,20 +111,40 @@ export function evaluateParlay(
 
     const selections = group.map((leg) => leg.selection);
     const { win, anyPush } = jointProbability(matrix, selections);
-    trueProbability *= win;
     noPushProbability *= 1 - anyPush;
 
+    // Las marginales son las de cada leg —la probabilidad calibrada, mezcla de
+    // modelo y mercado— y la matriz sólo aporta cómo dependen entre sí las del
+    // mismo partido. Tomar `win` tal cual sería usar el modelo puro, que es
+    // justo lo que el backtesting descartó: con w = 0 el EV de un parlay de una
+    // leg no coincidiría con el de esa misma selección suelta.
+    const naive = group.reduce((acc, leg) => acc * leg.probability, 1);
+    let joint = naive;
+
     if (group.length > 1) {
-      const naive = group.reduce((acc, leg) => acc * leg.probability, 1);
+      const independent = group.reduce(
+        (acc, leg) => acc * selectionProbability(matrix, leg.selection),
+        1,
+      );
+      // `win / independent` es cuánto sube o baja la conjunta respecto a la
+      // independencia según el modelo. Nunca puede superar a la leg menos
+      // probable: dos sucesos no ocurren juntos más a menudo que el más raro.
+      joint =
+        independent > 0
+          ? Math.min(naive * (win / independent), ...group.map((leg) => leg.probability))
+          : naive;
+
       correlatedGroups.push({
         fixtureId,
         legIds: group.map((l) => l.id),
         matchLabel: group[0]!.matchLabel,
         naiveProbability: naive,
-        trueProbability: win,
+        trueProbability: joint,
         correlation: selectionCorrelation(matrix, selections[0]!, selections[1]!),
       });
     }
+
+    trueProbability *= joint;
   }
 
   const anyPushProbability = 1 - noPushProbability;
@@ -277,7 +302,7 @@ export function auditParlay(input: AuditInput): AuditResult {
         id: 'expected_value',
         severity: 'ok',
         title: 'EV positivo',
-        body: `Esperanza de +${pct(evaluation.expectedValue)} según el modelo. Margen de la casa ya descontado.`,
+        body: `Esperanza de +${pct(evaluation.expectedValue)} con la probabilidad estimada. Margen de la casa ya descontado.`,
       });
     }
   }

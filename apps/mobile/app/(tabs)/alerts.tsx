@@ -1,8 +1,9 @@
 /**
- * Valor: las selecciones donde el modelo discrepa del mercado a nuestro favor.
+ * Valor: las selecciones donde una casa paga más de lo que vale el resultado.
  *
- * Una apuesta aparece aquí cuando la probabilidad mezclada supera a la que
- * implica la cuota, después de quitarle el margen de la casa. Es la misma
+ * Una apuesta aparece aquí cuando la probabilidad calibrada —hoy, el consenso
+ * sin margen de todas las casas, porque el backtesting dio w = 0— supera a la
+ * que implica la mejor cuota disponible. Es la misma
  * cuenta que hace el builder —nada se precalcula ni se guarda— así que el EV
  * de esta lista y el del parlay que construyas no pueden discrepar.
  *
@@ -64,11 +65,11 @@ export default function AlertsRoute(): React.ReactElement {
         <SampleDataBanner source={data.source} emptySchedule={data.emptySchedule} />
 
         <View style={styles.header}>
-          <Overline>Valor · modelo contra mercado</Overline>
-          <Txt variant="display">Dónde hay ventaja</Txt>
+          <Overline>Valor · mejor precio contra consenso</Overline>
+          <Txt variant="display">Dónde pagan de más</Txt>
           <Txt variant="caption" tone="ink2">
-            Cada fila compara la probabilidad del modelo con la que implica la cuota sin el margen
-            de la casa. Toca la cuota para llevarla al builder.
+            Cada fila compara la mejor cuota disponible con la probabilidad que el conjunto de las
+            casas, sin su margen, da a ese resultado. Toca la cuota para llevarla al builder.
           </Txt>
         </View>
 
@@ -158,9 +159,8 @@ function ValueRow({
         {/* La ventaja es la diferencia que justifica la apuesta: sin ella, el
             EV positivo sería sólo ruido de redondeo. */}
         <Txt variant="caption" tone="ink3" numberOfLines={1}>
-          modelo {formatPercent(market.blendedProbability, 0)} · mercado{' '}
-          {formatPercent(market.marketProbability, 0)} · ventaja{' '}
-          {formatSignedPercent(market.edge)}
+          prob. {formatPercent(market.blendedProbability, 0)} · la cuota implica{' '}
+          {formatPercent(1 / market.odds, 0)} · ventaja {formatSignedPercent(market.edge)}
           {market.bookmaker ? ` · ${market.bookmaker}` : ''}
         </Txt>
       </Pressable>

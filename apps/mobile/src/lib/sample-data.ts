@@ -126,6 +126,8 @@ function simulateBooks(odds: number[]): { bookmaker: string; odds: number[] }[] 
   }));
 }
 
+const OUTCOME_INDEX = { home: 0, draw: 1, away: 2 } as const;
+
 function buildFixture(seed: FixtureSeed): SampleFixture {
   const matrix = scoreMatrixFromRates(seed.lambda, seed.mu, RHO, MAX_GOALS);
 
@@ -136,10 +138,14 @@ function buildFixture(seed: FixtureSeed): SampleFixture {
   const markets: SampleMarket[] = seed.offers.map((offer, index) => {
     const modelProbability = selectionProbability(matrix, offer.selection);
 
-    // La probabilidad de mercado de cada selección se toma de su propia cuota,
-    // descontando un margen típico del 5%.
-    const marketProbability = Math.min(0.98, (1 / offer.odds) / 1.05);
-    const blendedProbability = blendProbabilities(modelProbability, marketProbability, 0.35);
+    // El 1X2 sale del consenso, igual que el reparto de la cabecera; el resto
+    // de mercados, de su propia cuota descontando un margen típico del 5%.
+    const marketProbability =
+      offer.selection.kind === 'match_result'
+        ? consensus.probabilities[OUTCOME_INDEX[offer.selection.outcome]]!
+        : Math.min(0.98, (1 / offer.odds) / 1.05);
+    // w = 0, como en producción desde que el backtesting lo calibró.
+    const blendedProbability = blendProbabilities(modelProbability, marketProbability, 0);
 
     return {
       id: `${seed.id}:${index}`,
@@ -168,11 +174,12 @@ function buildFixture(seed: FixtureSeed): SampleFixture {
     matchOdds: seed.matchOdds,
     markets,
     bestEv,
-    modelSplit: {
+    split: {
       home: consensus.probabilities[0]!,
       draw: consensus.probabilities[1]!,
       away: consensus.probabilities[2]!,
     },
+    splitSource: 'estimate',
   };
 }
 

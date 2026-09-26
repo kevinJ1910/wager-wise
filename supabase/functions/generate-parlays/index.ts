@@ -21,6 +21,7 @@ import {
   type ParlayLeg,
   type Selection,
 } from '../../../packages/engine/dist/index.js';
+import { commissionOf } from '../_shared/exchanges.ts';
 import { analyzeParlay, type LegBrief } from '../_shared/gemini.ts';
 import { trackRun } from '../_shared/quota.ts';
 
@@ -103,20 +104,34 @@ Deno.serve(async () => {
 
   try {
     summary.modelWeight = await currentModelWeight(supabase);
-    const { candidates, matrices } = await buildCandidates(supabase, summary.modelWeight, summary);
+    const { selections, matrices } = await buildCandidates(supabase, summary.modelWeight, summary);
+
+    // Se guardan todas, no sólo las que tienen ventaja: la app necesita las
+    // cuotas y probabilidades de cada partido para enseñarlo y para que el
+    // auditor revise cualquier parlay, tenga valor o no. Qué es "valor" lo
+    // decide quien lee, con el EV de cada fila.
+    if (selections.length > 0) {
+      summary.predictions = await storePredictions(supabase, selections);
+    }
+
+    const candidates = selections.filter((s) => s.edge >= MIN_EDGE);
     summary.candidates = candidates.length;
 
+    const today = new Date().toISOString().slice(0, 10);
+    // Regenerar el día es idempotente: borramos lo anterior antes de escribir,
+    // también cuando hoy no sale nada — un parlay de la pasada anterior no
+    // puede quedarse publicado si las cuotas ya no lo sostienen.
+    await supabase.from('parlay_recommendations').delete().eq('for_date', today);
+
     if (candidates.length === 0) {
-      summary.notes.push('Sin candidatos: faltan cuotas o el modelo no está ajustado.');
+      summary.notes.push(
+        selections.length === 0
+          ? 'Sin selecciones: faltan cuotas o el modelo no está ajustado.'
+          : `Ninguna de las ${selections.length} selecciones supera la ventaja mínima.`,
+      );
       await finishRun('ok', summary);
       return json(summary);
     }
-
-    summary.predictions = await storePredictions(supabase, candidates);
-
-    const today = new Date().toISOString().slice(0, 10);
-    // Regenerar el día es idempotente: borramos lo anterior antes de escribir.
-    await supabase.from('parlay_recommendations').delete().eq('for_date', today);
 
     // Las selecciones sueltas llegan hasta el horizonte de las casas, pero el
     // parlay del día sólo combina partidos cercanos.
@@ -148,14 +163,14 @@ Deno.serve(async () => {
 });
 
 /**
- * Construye las selecciones con valor a partir del modelo y las cuotas más
- * recientes de cada partido.
+ * Evalúa todas las selecciones cotizadas a partir del modelo y las cuotas más
+ * recientes de cada partido. El filtro de ventaja lo aplica quien las usa.
  */
 async function buildCandidates(
   supabase: SupabaseClient,
   modelWeight: number,
   summary: { notes: string[] },
-): Promise<{ candidates: Candidate[]; matrices: Map<string, number[][]> }> {
+): Promise<{ selections: Candidate[]; matrices: Map<string, number[][]> }> {
   const now = new Date();
   const horizon = new Date(now.getTime() + CANDIDATE_HORIZON_HOURS * 3_600_000);
 
@@ -214,7 +229,7 @@ async function buildCandidates(
     );
   }
 
-  return { candidates, matrices };
+  return { selections: candidates, matrices };
 }
 
 /**
@@ -293,7 +308,7 @@ function evaluateFixture(
   const candidates: Candidate[] = [];
 
   for (const books of byMarket.values()) {
-    const quotes: { bookmaker: string; odds: number[] }[] = [];
+    const quotes: { bookmaker: string; odds: number[]; commission?: number }[] = [];
     let selections: Selection[] | null = null;
 
     for (const [bookmaker, snapshot] of books) {
@@ -306,7 +321,11 @@ function evaluateFixture(
       // peras con manzanas. Es más seguro descartarla.
       else if (theseSelections.length !== selections.length) continue;
 
-      quotes.push({ bookmaker, odds: outcomes.map((o) => o.odds) });
+      quotes.push({
+        bookmaker,
+        odds: outcomes.map((o) => o.odds),
+        commission: commissionOf(bookmaker),
+      });
     }
 
     if (!selections || quotes.length === 0) continue;
@@ -321,8 +340,6 @@ function evaluateFixture(
       const modelProbability = selectionProbability(matrix, selection);
       const blended = blendProbabilities(modelProbability, marketProbability, modelWeight);
       const edge = computeEdge(blended, best.odds);
-
-      if (edge < MIN_EDGE) return;
 
       candidates.push({
         ...context,

@@ -5,6 +5,7 @@ export {
   bookmakerMargin,
   removeVigMultiplicative,
   removeVigShin,
+  netOdds,
 } from './odds.js';
 
 export {

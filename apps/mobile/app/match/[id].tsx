@@ -6,10 +6,10 @@
  */
 
 import { formatOdds, formatPercent, formatSignedPercent } from '@wagerwise/core';
-import { matchResultProbabilities, type ParlayLeg } from '@wagerwise/engine';
+import type { ParlayLeg } from '@wagerwise/engine';
 import { GlassCard, Overline, Pill, Txt, evTone, useTheme } from '@wagerwise/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -29,10 +29,8 @@ export default function MatchRoute(): React.ReactElement {
   const legs = useBuilder((s) => s.legs);
   const toggleLeg = useBuilder((s) => s.toggleLeg);
 
-  const probabilities = useMemo(
-    () => (fixture ? matchResultProbabilities(fixture.matrix) : null),
-    [fixture],
-  );
+  // Las mismas probabilidades con las que se calcula el EV de cada mercado.
+  const probabilities = fixture?.split ?? null;
 
   if (!fixture || !probabilities) {
     return (
@@ -120,8 +118,10 @@ export default function MatchRoute(): React.ReactElement {
             </View>
           </View>
           <Txt variant="caption" tone="ink2">
-            Toda probabilidad de esta pantalla sale de la matriz de marcadores que generan estas dos
-            tasas, no de una tabla aparte.
+            El modelo da su propia probabilidad junto a cada mercado, pero el EV se calcula con la
+            calibrada: modelo y mercado mezclados con el peso que fija el backtesting cada semana
+            (Perfil · Cómo le va al modelo). La matriz de estas dos tasas mide además cómo se
+            correlacionan los mercados del partido.
           </Txt>
         </GlassCard>
 
@@ -232,7 +232,8 @@ function MarketRow({
         </Txt>
         <View style={styles.marketMeta}>
           <Txt variant="caption" tone="ink3">
-            prob. modelo {formatPercent(market.modelProbability, 0)}
+            prob. {formatPercent(market.blendedProbability, 0)} · modelo{' '}
+            {formatPercent(market.modelProbability, 0)}
           </Txt>
           <Pill
             label={formatSignedPercent(market.expectedValue)}

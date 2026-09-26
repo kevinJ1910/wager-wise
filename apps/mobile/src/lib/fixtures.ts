@@ -44,7 +44,13 @@ export interface FixtureView {
   markets: MarketOffer[];
   /** Mejor EV entre sus mercados, para ordenar la lista de Hoy. */
   bestEv: number;
-  modelSplit: { home: number; draw: number; away: number };
+  /**
+   * Probabilidades 1X2 que se enseñan. Son las mismas con las que se calcula
+   * el EV —la mezcla calibrada— cuando hay cuotas del 1X2; sin ellas, las del
+   * modelo, y `splitSource` lo dice para que la etiqueta no mienta.
+   */
+  split: { home: number; draw: number; away: number };
+  splitSource: 'estimate' | 'model';
 }
 
 /** Explicación de Gemini para una selección concreta. */

@@ -6,7 +6,7 @@
  * partida, y el modelo propio sólo debe moverlo en los márgenes.
  */
 
-import { bookmakerMargin, removeVigMultiplicative, removeVigShin } from './odds.js';
+import { bookmakerMargin, netOdds, removeVigMultiplicative, removeVigShin } from './odds.js';
 
 export type DevigMethod = 'multiplicative' | 'shin';
 
@@ -15,6 +15,12 @@ export interface BookQuote {
   bookmaker: string;
   /** Cuotas decimales, en el mismo orden de resultados para todas las casas. */
   odds: number[];
+  /**
+   * Comisión sobre la ganancia neta, sólo en exchanges. No toca el consenso
+   * —su precio bruto es precisamente el más limpio del mercado— pero sí la
+   * mejor cuota: lo que importa ahí es lo que de verdad se cobra.
+   */
+  commission?: number;
 }
 
 export interface ConsensusResult {
@@ -24,7 +30,7 @@ export interface ConsensusResult {
   averageMargin: number;
   /** Cuántas casas entraron en el cálculo. */
   bookmakerCount: number;
-  /** La mejor cuota disponible por resultado, con la casa que la ofrece. */
+  /** La mejor cuota disponible por resultado, neta de comisión, con la casa que la ofrece. */
   bestOdds: { odds: number; bookmaker: string }[];
 }
 
@@ -88,12 +94,15 @@ export function consensusProbabilities(
   const probabilities = accumulated.map((p) => p / weightTotal);
   const sum = probabilities.reduce((a, b) => a + b, 0);
 
+  const payable = (q: BookQuote, i: number): number =>
+    q.commission ? netOdds(q.odds[i]!, q.commission) : q.odds[i]!;
+
   const bestOdds = Array.from({ length: outcomes }, (_, i) => {
     let best = pool[0]!;
     for (const q of pool) {
-      if (q.odds[i]! > best.odds[i]!) best = q;
+      if (payable(q, i) > payable(best, i)) best = q;
     }
-    return { odds: best.odds[i]!, bookmaker: best.bookmaker };
+    return { odds: payable(best, i), bookmaker: best.bookmaker };
   });
 
   return {

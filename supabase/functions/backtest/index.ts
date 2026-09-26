@@ -21,6 +21,7 @@ import {
   type LeagueMatch,
   type MarketQuotes,
 } from '../../../packages/engine/dist/index.js';
+import { commissionOf } from '../_shared/exchanges.ts';
 import { LEAGUES, leagueId } from '../_shared/leagues.ts';
 import { trackRun } from '../_shared/quota.ts';
 
@@ -198,7 +199,19 @@ async function fetchHistoricalOdds(
         .range(from, to),
   );
 
-  return new Map(rows.map((row) => [row.fixture_id, { early: row.early, closing: row.closing }]));
+  return new Map(
+    rows.map((row) => [
+      row.fixture_id,
+      { early: withCommission(row.early), closing: withCommission(row.closing) },
+    ]),
+  );
+}
+
+/** Las mismas comisiones que aplica generate-parlays: si no, el backtest mediría otra cosa. */
+function withCommission(quotes: MarketQuotes): MarketQuotes {
+  const tag = (list: MarketQuotes['matchResult']) =>
+    list?.map((quote) => ({ ...quote, commission: commissionOf(quote.bookmaker) }));
+  return { matchResult: tag(quotes.matchResult), totals25: tag(quotes.totals25) };
 }
 
 /** PostgREST corta en 1000 filas; se pagina hasta agotar. */

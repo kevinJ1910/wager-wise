@@ -348,3 +348,62 @@ describe('interruptores del perfil', () => {
     ).toBe(false);
   });
 });
+
+describe('marginales calibradas', () => {
+  // Con w = 0 la probabilidad de cada leg es la del mercado, no la del modelo.
+  // La matriz sigue haciendo falta, pero sólo para la dependencia.
+  const home: Selection = { kind: 'match_result', outcome: 'home' };
+  const over: Selection = { kind: 'total_goals', line: 2.5, side: 'over' };
+
+  it('una leg sola vale lo que dice su probabilidad, no lo que dice el modelo', () => {
+    const single = { ...leg('a', 'betis-girona', home, 2.1, betisGirona), probability: 0.44 };
+    const evaluation = evaluateParlay([single], matrices);
+    expect(evaluation.trueProbability).toBeCloseTo(0.44, 12);
+  });
+
+  it('entre partidos distintos es el producto de las probabilidades calibradas', () => {
+    const legs = [
+      { ...leg('a', 'betis-girona', home, 2.1, betisGirona), probability: 0.44 },
+      { ...leg('b', 'brighton-newcastle', over, 1.7, brightonNewcastle), probability: 0.55 },
+    ];
+    expect(evaluateParlay(legs, matrices).trueProbability).toBeCloseTo(0.44 * 0.55, 12);
+  });
+
+  it('dentro de un partido aplica al producto calibrado la correlación del modelo', () => {
+    const modelHome = selectionProbability(betisGirona, home);
+    const modelOver = selectionProbability(betisGirona, over);
+    const modelJoint = evaluateParlay(
+      [leg('a', 'betis-girona', home, 2.1, betisGirona), leg('b', 'betis-girona', over, 1.7, betisGirona)],
+      matrices,
+    ).trueProbability;
+
+    const legs = [
+      { ...leg('a', 'betis-girona', home, 2.1, betisGirona), probability: 0.44 },
+      { ...leg('b', 'betis-girona', over, 1.7, betisGirona), probability: 0.55 },
+    ];
+    const evaluation = evaluateParlay(legs, matrices);
+
+    const lift = modelJoint / (modelHome * modelOver);
+    expect(evaluation.trueProbability).toBeCloseTo(0.44 * 0.55 * lift, 12);
+    // Gana el local y hay goles van juntos: la conjunta supera al producto.
+    expect(evaluation.trueProbability).toBeGreaterThan(0.44 * 0.55);
+  });
+
+  it('la conjunta nunca supera a la leg menos probable', () => {
+    const doubleChance: Selection = { kind: 'double_chance', outcome: 'home_draw' };
+    const legs = [
+      { ...leg('a', 'betis-girona', home, 2.1, betisGirona), probability: 0.6 },
+      { ...leg('b', 'betis-girona', doubleChance, 1.2, betisGirona), probability: 0.62 },
+    ];
+    expect(evaluateParlay(legs, matrices).trueProbability).toBeLessThanOrEqual(0.6 + 1e-12);
+  });
+
+  it('sucesos incompatibles siguen dando cero', () => {
+    const away: Selection = { kind: 'match_result', outcome: 'away' };
+    const legs = [
+      { ...leg('a', 'betis-girona', home, 2.1, betisGirona), probability: 0.44 },
+      { ...leg('b', 'betis-girona', away, 3.6, betisGirona), probability: 0.28 },
+    ];
+    expect(evaluateParlay(legs, matrices).trueProbability).toBe(0);
+  });
+});

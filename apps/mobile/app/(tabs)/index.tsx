@@ -153,8 +153,8 @@ export default function TodayRoute(): React.ReactElement {
           <GlassCard variant="card" style={styles.emptyCard}>
             <Txt variant="bodySmall">Hoy no hay ningún parlay con valor</Txt>
             <Txt variant="caption" tone="ink2">
-              Ninguna combinación supera el margen de las casas. Recomendar una igualmente sería
-              regalar dinero: mejor esperar a la próxima jornada.
+              Ninguna casa paga por encima de lo que el mercado entero cree que vale cada
+              resultado. Recomendar un parlay igualmente sería regalar el margen: mejor esperar.
             </Txt>
           </GlassCard>
         )}
@@ -178,7 +178,7 @@ function FixtureCard({ fixture }: { fixture: FixtureView }): React.ReactElement 
   const router = useRouter();
   const evPercent = fixture.bestEv * 100;
 
-  const split = fixture.modelSplit;
+  const split = fixture.split;
 
   return (
     <Pressable
@@ -226,7 +226,7 @@ function FixtureCard({ fixture }: { fixture: FixtureView }): React.ReactElement 
           </View>
         </View>
 
-        {/* Barra de probabilidad del modelo: local / empate / visitante. */}
+        {/* Barra de probabilidad: local / empate / visitante. */}
         <View style={styles.modelRow}>
           <View style={[styles.modelBar, { backgroundColor: theme.colors.hair }]}>
             <View
@@ -235,7 +235,8 @@ function FixtureCard({ fixture }: { fixture: FixtureView }): React.ReactElement 
             <View style={{ width: `${split.draw * 100}%`, backgroundColor: theme.colors.ink3 }} />
           </View>
           <Txt variant="caption" tone="ink3">
-            modelo {pct(split.home)}-{pct(split.draw)}-{pct(split.away)}
+            {fixture.splitSource === 'estimate' ? 'prob.' : 'modelo'} {pct(split.home)}-
+            {pct(split.draw)}-{pct(split.away)}
           </Txt>
         </View>
       </GlassCard>

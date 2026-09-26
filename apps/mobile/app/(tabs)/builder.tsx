@@ -114,7 +114,7 @@ export default function BuilderRoute(): React.ReactElement {
               </Txt>
             </GlassCard>
             <GlassCard variant="inner" style={styles.probCell}>
-              <Overline>Prob. modelo</Overline>
+              <Overline>Prob. estimada</Overline>
               <Txt variant="title" tone="accent" style={styles.probValue}>
                 {hasLegs ? formatPercent(evaluation.trueProbability) : '—'}
               </Txt>

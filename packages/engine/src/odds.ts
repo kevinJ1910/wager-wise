@@ -97,6 +97,21 @@ export function removeVigShin(decimalOdds: readonly number[], tolerance = 1e-10)
   return probs.map((p) => p / sum);
 }
 
+/**
+ * Cuota neta de comisión.
+ *
+ * Un exchange no mete margen en el precio: cobra un porcentaje de la ganancia
+ * neta al liquidar. Una cuota de 2.10 con un 5% de comisión paga como una de
+ * 2.045, y compararla sin descontar la haría parecer la mejor del mercado sin
+ * serlo.
+ */
+export function netOdds(decimalOdds: number, commission: number): number {
+  if (commission < 0 || commission >= 1) {
+    throw new RangeError(`La comisión debe estar en [0, 1), recibido ${commission}`);
+  }
+  return 1 + (decimalOdds - 1) * (1 - commission);
+}
+
 function assertMarket(decimalOdds: readonly number[]): void {
   if (decimalOdds.length < 2) {
     throw new RangeError('Un mercado necesita al menos dos resultados para quitar el vig.');

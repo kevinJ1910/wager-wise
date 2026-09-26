@@ -99,21 +99,41 @@ log loss (más bajo es mejor)      1X2     más/menos 2.5
   w óptimo                         0 %  (en las cuatro ligas y los dos mercados)
 
 si se hubieran seguido las selecciones con w = 35% y ventaja ≥ 2%
-  1.451 apuestas · ROI −9,4% ± 9,4% · CLV −0,3% · batió el cierre en 43%
+  996 apuestas · ROI −10,2% ± 11,8% · CLV −0,3% · batió el cierre en 45%
 ```
 
 La log loss crece de forma monótona desde `w = 0` hasta `w = 1`, y sigue así con
 dieciséis combinaciones de vida media y encogimiento validadas fuera de muestra.
 Un Dixon-Coles que sólo mira goles no sabe nada que el consenso de siete casas
 no sepa ya, y las "ventajas" que encontraba eran su propio error de estimación.
-El CLV negativo lo confirma por otra vía: el mercado se movía en contra de sus
-selecciones antes del saque.
+El ROI, por sí solo, no llega a distinguirse de cero —con mil apuestas el ruido
+es de ±12 puntos—, pero el CLV negativo lo confirma por otra vía: el mercado se
+movía en contra de sus selecciones antes del saque. Las cuotas de Betfair
+Exchange y Matchbook se toman netas de comisión; sin ese descuento el exchange
+aparecía como la mejor cuota casi siempre y el ROI salía mejor de lo que se
+podía cobrar.
 
-`generate-parlays` usa el `w` de la última calibración con muestra suficiente, así
-que a partir de ahora sólo marca valor cuando una casa paga por encima del
-consenso de las demás. La pantalla **Cómo le va al modelo** (desde Perfil)
-enseña todo esto al usuario con los números del último backtest, que se repite
-cada lunes.
+## Así que la app es un auditor que busca el mejor precio
+
+`generate-parlays` usa el `w` de la última calibración con muestra suficiente, y
+con `w = 0` hay valor sólo cuando una casa paga por encima de lo que el
+consenso de todas las demás cree que vale el resultado. Eso pasa pocas veces, y
+la pantalla Valor se queda vacía casi siempre: es la respuesta correcta, no un
+fallo.
+
+Lo que la app hace a diario es otra cosa:
+
+- **Enseña todas las cuotas.** `model_predictions` guarda cada selección
+  cotizada, no sólo las que tienen ventaja, con su mejor precio y el EV frente al
+  consenso. Hoy y Partido muestran cuotas y probabilidades de todos los partidos.
+- **Audita cualquier parlay.** El EV de un parlay se calcula con la probabilidad
+  calibrada de cada leg; la matriz de Dixon-Coles se queda para lo que sí sabe
+  hacer, que es medir cuánto se correlacionan dos mercados del mismo partido.
+  Antes el auditor tomaba la conjunta directamente de la matriz, así que su EV
+  era siempre el del modelo puro, aunque la mezcla dijera otra cosa.
+- **Da la cara.** La pantalla **Cómo le va al modelo** (desde Perfil) enseña al
+  usuario el último backtest, que se repite cada lunes. Si algún día el modelo
+  aporta, el `w` subirá solo y la pantalla lo dirá.
 
 ---
 
@@ -167,7 +187,7 @@ app y en el backend.
 
 ```bash
 pnpm install
-pnpm test          # 208 tests
+pnpm test          # 221 tests
 pnpm typecheck
 ```
 

@@ -111,8 +111,10 @@ async function fetchUpcomingFixtures(): Promise<LiveFixtures> {
       matrix,
       matchOdds: matchOddsFrom(markets),
       markets,
-      bestEv: markets.reduce((max, m) => Math.max(max, m.expectedValue), 0),
-      modelSplit: { home: outcome.home, draw: outcome.draw, away: outcome.away },
+      // Desde -1 y no desde 0: si todos los mercados tienen EV negativo, eso es
+      // lo que hay que enseñar, no un "+0,0%" que nadie calculó.
+      bestEv: markets.reduce((max, m) => Math.max(max, m.expectedValue), -1),
+      ...splitFrom(markets, outcome),
     });
   }
 
@@ -173,6 +175,27 @@ function toMarkets(row: FixtureRow): MarketOffer[] {
   }
 
   return markets.sort((a, b) => b.expectedValue - a.expectedValue);
+}
+
+/**
+ * El reparto 1X2 que se enseña: el de la mezcla calibrada si el backend guardó
+ * las tres selecciones, el del modelo si no.
+ */
+function splitFrom(
+  markets: MarketOffer[],
+  model: { home: number; draw: number; away: number },
+): Pick<FixtureView, 'split' | 'splitSource'> {
+  const find = (outcome: 'home' | 'draw' | 'away'): number | undefined =>
+    markets.find((m) => m.selection.kind === 'match_result' && m.selection.outcome === outcome)
+      ?.blendedProbability;
+
+  const home = find('home');
+  const draw = find('draw');
+  const away = find('away');
+
+  return home !== undefined && draw !== undefined && away !== undefined
+    ? { split: { home, draw, away }, splitSource: 'estimate' }
+    : { split: model, splitSource: 'model' };
 }
 
 /** Las tres cuotas del 1X2, sólo si el mercado completo está publicado. */
